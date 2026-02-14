@@ -86,7 +86,12 @@ const downloadMaterial = async (req, res) => {
         // Construct absolute path. 
         // Note: material.fileUrl might be relative like 'uploads/file.pdf'
         // We need to ensure we resolve it correctly from the server root.
-        const filePath = path.resolve(__dirname, '..', material.fileUrl);
+        // Construct absolute path. 
+        // Note: material.fileUrl might be relative like 'uploads/file.pdf'
+        // We need to ensure we resolve it correctly from the server root.
+        // Also normalize separators
+        const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
+        const filePath = path.resolve(__dirname, '..', normalizedFileUrl);
         console.log('Attempting to download file:', filePath);
 
         res.download(filePath, material.title + path.extname(material.fileUrl), (err) => {

@@ -1,15 +1,16 @@
 const nodemailer = require('nodemailer');
 
+// Create reusable transporter object using the default SMTP transport
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'joyajay83@gmail.com',
+        pass: 'ywdyfttbyzpltevx'
+    }
+});
+
 const sendEmail = async (to, subject, text) => {
     try {
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: 'joyajay83@gmail.com',
-                pass: 'ywdyfttbyzpltevx'
-            }
-        });
-
         const mailOptions = {
             from: 'joyajay83@gmail.com',
             to: to,
@@ -19,8 +20,10 @@ const sendEmail = async (to, subject, text) => {
 
         const info = await transporter.sendMail(mailOptions);
         console.log('✅ Email sent: ' + info.response);
+        return true;
     } catch (error) {
         console.error('❌ Error sending email:', error);
+        return false;
     }
 };
 

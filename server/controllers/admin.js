@@ -38,7 +38,13 @@ const approveTeacher = async (req, res) => {
     try {
         const teacher = await Teacher.findByIdAndUpdate(id, { isApproved: true }, { new: true });
         if (teacher) {
-            await sendApprovalEmail(teacher.email, teacher.name);
+            // Send email in next event loop tick to ensure no blocking
+            setImmediate(() => {
+                console.log(`Approving teacher: ${teacher.name}, Email: ${teacher.email}`);
+                sendApprovalEmail(teacher.email, teacher.name)
+                    .then(() => console.log(`Email initiated for ${teacher.email}`))
+                    .catch(err => console.error('Email send failed', err));
+            });
         }
         res.status(200).json(teacher);
     } catch (error) {
@@ -51,7 +57,9 @@ const rejectTeacher = async (req, res) => {
     try {
         const teacher = await Teacher.findById(id);
         if (teacher) {
-            await sendRejectionEmail(teacher.email, teacher.name);
+            setImmediate(() => {
+                sendRejectionEmail(teacher.email, teacher.name).catch(err => console.error('Email send failed', err));
+            });
             await Teacher.findByIdAndDelete(id); // Or keep with rejected flag
         }
         res.status(200).json({ message: 'Teacher rejected and removed' });
@@ -65,7 +73,13 @@ const approveStudent = async (req, res) => {
     try {
         const student = await Student.findByIdAndUpdate(id, { isApproved: true }, { new: true });
         if (student) {
-            await sendApprovalEmail(student.email, student.name);
+            // Send email in next event loop tick
+            setImmediate(() => {
+                console.log(`Approving student: ${student.name}, Email: ${student.email}`);
+                sendApprovalEmail(student.email, student.name)
+                    .then(() => console.log(`Email initiated for ${student.email}`))
+                    .catch(err => console.error('Email send failed', err));
+            });
         }
         res.status(200).json(student);
     } catch (error) {
@@ -78,7 +92,9 @@ const rejectStudent = async (req, res) => {
     try {
         const student = await Student.findById(id);
         if (student) {
-            await sendRejectionEmail(student.email, student.name);
+            setImmediate(() => {
+                sendRejectionEmail(student.email, student.name).catch(err => console.error('Email send failed', err));
+            });
             await Student.findByIdAndDelete(id);
         }
         res.status(200).json({ message: 'Student rejected and removed' });

@@ -36,7 +36,9 @@ app.get('/download/:id', async (req, res) => {
             return res.status(404).json({ message: 'Material not found' });
         }
 
-        const filePath = path.resolve(__dirname, material.fileUrl);
+        // Normalize fileUrl to use correct path separators for the OS
+        const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
+        const filePath = path.resolve(__dirname, normalizedFileUrl);
         console.log('Attempting to download file from root route:', filePath);
 
         res.download(filePath, material.title + path.extname(material.fileUrl), (err) => {
@@ -93,7 +95,7 @@ const siteSettingsRoutes = require('./routes/siteSettings');
 
 app.use('/materials', materialRoutes);
 app.use('/api/site-settings', siteSettingsRoutes);
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 

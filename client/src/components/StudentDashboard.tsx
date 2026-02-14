@@ -18,7 +18,7 @@ const StudentDashboard: React.FC = () => {
             const token = profile.token;
             if (!token) return;
 
-            const response = await fetch('http://localhost:5000/materials', {
+            const response = await fetch('https://online-learning-portal-ciy7.onrender.com/materials', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -35,7 +35,7 @@ const StudentDashboard: React.FC = () => {
             const token = profile.token;
             if (!token) return;
 
-            const response = await fetch('http://localhost:5000/auth/me', {
+            const response = await fetch('https://online-learning-portal-ciy7.onrender.com/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -131,7 +131,15 @@ const StudentDashboard: React.FC = () => {
 
             {/* Study Materials Section */}
             <div className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Study Materials</h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-semibold text-gray-800">Study Materials</h2>
+                    <button
+                        onClick={fetchMaterials}
+                        className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 transition flex items-center"
+                    >
+                        🔄 Refresh
+                    </button>
+                </div>
                 {materials.length === 0 ? (
                     <div className="bg-white p-6 rounded-lg shadow text-center">
                         <p className="text-gray-600">No study materials available for your course/branch yet.</p>
@@ -159,7 +167,7 @@ const StudentDashboard: React.FC = () => {
                                     ) : (
                                         <>
                                             <a
-                                                href={`http://localhost:5000/${material.fileUrl}`}
+                                                href={`https://online-learning-portal-ciy7.onrender.com/${material.fileUrl}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex-1 text-center bg-indigo-100 text-indigo-700 py-2 rounded hover:bg-indigo-200 transition"
@@ -167,7 +175,7 @@ const StudentDashboard: React.FC = () => {
                                                 View
                                             </a>
                                             <a
-                                                href={`http://localhost:5000/download/${material._id}`}
+                                                href={`https://online-learning-portal-ciy7.onrender.com/download/${material._id}`}
                                                 className="flex-1 text-center bg-green-100 text-green-700 py-2 rounded hover:bg-green-200 transition"
                                             >
                                                 Download
@@ -199,7 +207,7 @@ const QuizSection: React.FC = () => {
                 const token = profile.token;
                 // Fetch all quizzes for now. 
                 // Future improvement: Filter by student's course/branch if available in profile
-                const response = await fetch('http://localhost:5000/quizzes', {
+                const response = await fetch('https://online-learning-portal-ciy7.onrender.com/quizzes', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {

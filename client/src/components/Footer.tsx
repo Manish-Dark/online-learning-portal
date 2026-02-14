@@ -23,7 +23,7 @@ const Footer: React.FC = () => {
         const fetchSettings = async () => {
             try {
                 // Adjust URL if needed based on your API setup
-                const res = await axios.get('http://localhost:5000/api/site-settings');
+                const res = await axios.get('https://online-learning-portal-ciy7.onrender.com/api/site-settings');
                 if (res.data) {
                     setSettings(res.data);
                 }
@@ -35,7 +35,7 @@ const Footer: React.FC = () => {
         fetchSettings();
     }, []);
 
-    const logoUrl = settings.logoUrl ? `http://localhost:5000${settings.logoUrl}` : '';
+    const logoUrl = settings.logoUrl ? `https://online-learning-portal-ciy7.onrender.com${settings.logoUrl}` : '';
 
     return (
         <footer className="bg-gray-900 text-white h-16 mt-auto w-full flex items-center">

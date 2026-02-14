@@ -36,10 +36,11 @@ const AdminDashboard: React.FC = () => {
         try {
             await API.put(`/admin/${role}s/${id}/approve`);
             loadData();
-            alert(`${role.charAt(0).toUpperCase() + role.slice(1)} Approved!`);
+            alert(`${role.charAt(0).toUpperCase() + role.slice(1)} Approved successfully! An email notification has been sent.`);
         } catch (error: any) {
             console.error(error);
-            alert('Error approving user');
+            const errorMessage = error.response?.data?.message || 'Error approving user';
+            alert(`Failed to approve user: ${errorMessage}`);
         }
     }
 
@@ -48,10 +49,11 @@ const AdminDashboard: React.FC = () => {
         try {
             await API.put(`/admin/${role}s/${id}/reject`);
             loadData();
-            alert(`${role.charAt(0).toUpperCase() + role.slice(1)} Rejected!`);
+            alert(`${role.charAt(0).toUpperCase() + role.slice(1)} Rejected successfully! An email notification has been sent.`);
         } catch (error: any) {
             console.error(error);
-            alert('Error rejecting user');
+            const errorMessage = error.response?.data?.message || 'Error rejecting user';
+            alert(`Failed to reject user: ${errorMessage}`);
         }
     }
 
@@ -174,7 +176,15 @@ const AdminDashboard: React.FC = () => {
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">Admin Dashboard</h2>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Admin Dashboard</h2>
+                <button
+                    onClick={loadData}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center"
+                >
+                    🔄 Refresh Data
+                </button>
+            </div>
 
             <div className="bg-white p-6 rounded-lg shadow mb-10">
                 <h3 className="text-lg font-bold mb-4">Landing Page Settings</h3>
