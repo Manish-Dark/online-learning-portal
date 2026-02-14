@@ -10,3 +10,5 @@ server/uploads/
 
 # dependencies
 node_modules/
+
+server/nodemon.json
