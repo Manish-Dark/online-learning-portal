@@ -1,1 +1,12 @@
-node_modules
+# environment variables
+.env
+server/.env
+
+# frontend build output
+client/dist/
+
+# backend uploads
+server/uploads/
+
+# dependencies
+node_modules/
