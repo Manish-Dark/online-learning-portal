@@ -39,4 +39,4 @@ const sendRejectionEmail = async (email, name) => {
     await sendEmail(email, subject, text);
 };
 
-module.exports = { sendApprovalEmail, sendRejectionEmail };
+module.exports = { sendApprovalEmail, sendRejectionEmail, sendEmail };
