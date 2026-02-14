@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
-dotenv.config();
+const path = require('path');
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,7 +25,7 @@ app.use((req, res, next) => {
 
 // Import dependencies for download route
 const StudyMaterial = require('./models/StudyMaterial');
-const path = require('path');
+// const path = require('path'); // Removed duplicate
 
 // Direct download route at root level - MOVED TO TOP
 app.get('/download/:id', async (req, res) => {
