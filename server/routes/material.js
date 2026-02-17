@@ -13,34 +13,9 @@ router.use((req, res, next) => {
 const { uploadMaterial, getMaterials, downloadMaterial, addLink } = require('../controllers/material');
 const { auth, teacherLimit } = require('../middleware/auth');
 
-// Configure Multer for file upload
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = 'uploads/';
-        // Create directory if it doesn't exist (Node 10+ has fs.mkdir recursive)
-        const fs = require('fs');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        // Unique filename: fieldname-timestamp.ext
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const { storage } = require('../config/cloudinary');
 
-const upload = multer({
-    storage: storage,
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/pdf') {
-            cb(null, true);
-        } else {
-            cb(new Error('Only PDFs are allowed'), false);
-        }
-    }
-});
+const upload = multer({ storage: storage });
 
 console.log('addLink Type:', typeof addLink);
 

@@ -167,7 +167,7 @@ const StudentDashboard: React.FC = () => {
                                     ) : (
                                         <>
                                             <a
-                                                href={`/api/${material.fileUrl}`}
+                                                href={material.fileUrl && material.fileUrl.startsWith('http') ? material.fileUrl : `/api/${material.fileUrl}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex-1 text-center bg-indigo-100 text-indigo-700 py-2 rounded hover:bg-indigo-200 transition"

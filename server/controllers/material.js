@@ -34,7 +34,8 @@ const uploadMaterial = async (req, res) => {
         } else {
             // It's a file
             if (file) {
-                materialData.fileUrl = file.path.replace(/\\/g, '/');
+                // Cloudinary returns the URL in file.path (or file.secure_url)
+                materialData.fileUrl = file.path;
             }
         }
 
@@ -43,6 +44,7 @@ const uploadMaterial = async (req, res) => {
         await material.save();
         res.status(201).json({ message: 'Material uploaded successfully', material });
     } catch (error) {
+        console.error('Upload Error:', error);
         res.status(500).json({ message: 'Error uploading material', error: error.message });
     }
 };
@@ -76,23 +78,19 @@ const addLink = async (req, res) => {
 const downloadMaterial = async (req, res) => {
     try {
         const material = await StudyMaterial.findById(req.params.id);
-        console.log('Download request for ID:', req.params.id);
-        console.log('Found material:', material);
 
         if (!material) {
             return res.status(404).json({ message: 'Material not found' });
         }
 
-        // Construct absolute path. 
-        // Note: material.fileUrl might be relative like 'uploads/file.pdf'
-        // We need to ensure we resolve it correctly from the server root.
-        // Construct absolute path. 
-        // Note: material.fileUrl might be relative like 'uploads/file.pdf'
-        // We need to ensure we resolve it correctly from the server root.
-        // Also normalize separators
+        // Check if fileUrl is a remote URL (Cloudinary)
+        if (material.fileUrl && material.fileUrl.startsWith('http')) {
+            return res.redirect(material.fileUrl);
+        }
+
+        // Fallback for old local files (will likely fail on Vercel but kept for safety)
         const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
         const filePath = path.resolve(__dirname, '..', normalizedFileUrl);
-        console.log('Attempting to download file:', filePath);
 
         res.download(filePath, material.title + path.extname(material.fileUrl), (err) => {
             if (err) {
@@ -158,8 +156,8 @@ const deleteMaterial = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this material' });
         }
 
-        // If it's a file, delete from filesystem
-        if (material.type === 'file' && material.fileUrl) {
+        // If it's a file, delete from filesystem ONLY if it's local
+        if (material.type === 'file' && material.fileUrl && !material.fileUrl.startsWith('http')) {
             const filePath = path.resolve(__dirname, '..', material.fileUrl);
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
