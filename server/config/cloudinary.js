@@ -13,9 +13,11 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
+        const isPdf = file.mimetype === 'application/pdf';
         return {
             folder: 'online-learning-portal',
-            resource_type: 'auto',
+            resource_type: isPdf ? 'raw' : 'auto', // Force raw for PDFs to prevent image conversion issues
+            format: isPdf ? 'pdf' : undefined, // Explicitly set format for PDFs
             public_id: file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '') + '-' + Date.now(),
         };
     },
