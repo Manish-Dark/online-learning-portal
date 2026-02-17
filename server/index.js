@@ -28,7 +28,7 @@ const StudyMaterial = require('./models/StudyMaterial');
 // const path = require('path'); // Removed duplicate
 
 // Direct download route at root level - MOVED TO TOP
-app.get('/download/:id', async (req, res) => {
+app.get('/api/download/:id', async (req, res) => {
     try {
         const material = await StudyMaterial.findById(req.params.id);
         console.log('Root Download request for ID:', req.params.id);
@@ -80,11 +80,12 @@ const adminRoutes = require('./routes/admin');
 const quizRoutes = require('./routes/quiz');
 
 // Routes Configuration
-app.use('/auth', authRoutes);
-app.use('/courses', courseRoutes);
-app.use('/lessons', lessonRoutes);
-app.use('/admin', adminRoutes);
-app.use('/quizzes', quizRoutes);
+// Routes Configuration
+app.use('/api/auth', authRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/lessons', lessonRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/quizzes', quizRoutes);
 
 const materialRoutes = require('./routes/material');
 const siteSettingsRoutes = require('./routes/siteSettings');
@@ -94,7 +95,7 @@ const siteSettingsRoutes = require('./routes/siteSettings');
 
 
 
-app.use('/materials', materialRoutes);
+app.use('/api/materials', materialRoutes);
 app.use('/api/site-settings', siteSettingsRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -107,11 +108,11 @@ app.get('/', (req, res) => {
 });
 
 // Sanity check route to verify server is reachable
-app.get('/sanity', (req, res) => {
+app.get('/api/sanity', (req, res) => {
     res.send('Sanity check passed!');
 });
 
-app.get('/debug/materials', async (req, res) => {
+app.get('/api/debug/materials', async (req, res) => {
     try {
         const materials = await StudyMaterial.find({});
         res.json(materials);
@@ -126,6 +127,10 @@ app.use((req, res, next) => {
     res.status(404).send(`Cannot GET (Logged) ${req.url}`);
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+    });
+}
+
+module.exports = app;

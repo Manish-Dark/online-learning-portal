@@ -18,7 +18,7 @@ const StudentDashboard: React.FC = () => {
             const token = profile.token;
             if (!token) return;
 
-            const response = await fetch('https://online-learning-portal-ciy7.onrender.com/materials', {
+            const response = await fetch('/api/materials', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -35,7 +35,7 @@ const StudentDashboard: React.FC = () => {
             const token = profile.token;
             if (!token) return;
 
-            const response = await fetch('https://online-learning-portal-ciy7.onrender.com/auth/me', {
+            const response = await fetch('/api/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -167,7 +167,7 @@ const StudentDashboard: React.FC = () => {
                                     ) : (
                                         <>
                                             <a
-                                                href={`https://online-learning-portal-ciy7.onrender.com/${material.fileUrl}`}
+                                                href={`/api/${material.fileUrl}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex-1 text-center bg-indigo-100 text-indigo-700 py-2 rounded hover:bg-indigo-200 transition"
@@ -175,7 +175,7 @@ const StudentDashboard: React.FC = () => {
                                                 View
                                             </a>
                                             <a
-                                                href={`https://online-learning-portal-ciy7.onrender.com/download/${material._id}`}
+                                                href={`/api/download/${material._id}`}
                                                 className="flex-1 text-center bg-green-100 text-green-700 py-2 rounded hover:bg-green-200 transition"
                                             >
                                                 Download
@@ -207,7 +207,7 @@ const QuizSection: React.FC = () => {
                 const token = profile.token;
                 // Fetch all quizzes for now. 
                 // Future improvement: Filter by student's course/branch if available in profile
-                const response = await fetch('https://online-learning-portal-ciy7.onrender.com/quizzes', {
+                const response = await fetch('/api/quizzes', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {

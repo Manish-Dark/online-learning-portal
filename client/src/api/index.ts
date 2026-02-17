@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: 'https://online-learning-portal-ciy7.onrender.com' });
+const API = axios.create({ baseURL: '/api' });
 
 API.interceptors.request.use((req) => {
     if (localStorage.getItem('profile')) {
