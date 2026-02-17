@@ -112,20 +112,6 @@ router.put('/students/:id/reject', auth, adminCheck, rejectStudent);
 
 const { sendApprovalEmail, sendRejectionEmail, sendEmail } = require('../utils/email');
 
-// Debug Route to test email delivery explicitly
-router.post('/test-email', auth, adminCheck, async (req, res) => {
-    const { email } = req.body;
-    try {
-        console.log(`Testing email delivery to: ${email}`);
-        const success = await sendEmail(email, 'Test Email from API', 'This is a test email to verify the SMTP configuration.');
-        if (success) {
-            res.json({ message: 'Email sent successfully' });
-        } else {
-            res.status(500).json({ message: 'Failed to send email (Check server logs)' });
-        }
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+
 
 module.exports = router;
