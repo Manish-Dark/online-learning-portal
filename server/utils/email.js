@@ -1,13 +1,6 @@
 const nodemailer = require('nodemailer');
 
 // Create reusable transporter object using the default SMTP transport
-console.log('📧 Initializing Email Transporter with:', {
-    host: process.env.SMTP_HOST || '(not set)',
-    port: process.env.SMTP_PORT || '(not set)',
-    user: process.env.SMTP_USER ? '***' : '(not set)',
-    from: process.env.SMTP_FROM || '(not set)'
-});
-
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT, // 587 or 2525
@@ -19,9 +12,7 @@ const transporter = nodemailer.createTransport({
     tls: {
         minVersion: 'TLSv1.2', // Force TLS 1.2+ for better security/compatibility
         rejectUnauthorized: true
-    },
-    logger: true, // Log to console
-    debug: true   // Include debug info
+    }
 });
 
 // Verify connection configuration
