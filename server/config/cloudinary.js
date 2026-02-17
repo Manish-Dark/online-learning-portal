@@ -12,11 +12,13 @@ cloudinary.config({
 
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
-        folder: 'online-learning-portal',
-        allowed_formats: ['pdf', 'jpg', 'png', 'jpeg', 'txt'],
-        resource_type: 'auto'
-    }
+    params: async (req, file) => {
+        return {
+            folder: 'online-learning-portal',
+            resource_type: 'auto',
+            public_id: file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '') + '-' + Date.now(),
+        };
+    },
 });
 
 module.exports = {
