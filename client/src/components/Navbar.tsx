@@ -14,10 +14,10 @@ const Navbar: React.FC = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await axios.get('https://online-learning-portal-ciy7.onrender.com/api/site-settings');
+                const res = await axios.get('/api/site-settings');
                 if (res.data) {
                     if (res.data.brandName) setBrandName(res.data.brandName);
-                    if (res.data.logoUrl) setLogoUrl(`https://online-learning-portal-ciy7.onrender.com${res.data.logoUrl}`);
+                    if (res.data.logoUrl) setLogoUrl(res.data.logoUrl);
                 }
             } catch (error) {
                 console.error('Failed to fetch site settings', error);

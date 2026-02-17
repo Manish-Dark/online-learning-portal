@@ -62,7 +62,7 @@ const TeacherDashboard: React.FC = () => {
                 }
 
                 // Send JSON for link
-                response = await fetch('https://online-learning-portal-ciy7.onrender.com/materials/link', {
+                response = await fetch('/api/materials/link', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ const TeacherDashboard: React.FC = () => {
                 formData.append('type', 'file');
                 formData.append('file', file);
 
-                response = await fetch('https://online-learning-portal-ciy7.onrender.com/materials/upload', {
+                response = await fetch('/api/materials/upload', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -133,7 +133,7 @@ const TeacherDashboard: React.FC = () => {
             const headers = { 'Authorization': `Bearer ${token}` };
 
             // Fetch Materials
-            const matRes = await fetch('https://online-learning-portal-ciy7.onrender.com/materials', { headers });
+            const matRes = await fetch('/api/materials', { headers });
             if (matRes.ok) setMaterials(await matRes.json());
 
             // Fetch Quizzes (Teacher sees all or we need a specific teacher route? 
@@ -141,7 +141,7 @@ const TeacherDashboard: React.FC = () => {
             // Let's check getQuizzes logic: IF userRole is student checking completion. 
             // IF teacher, it returns all (filtered by nothing if no queries).
             // We might want to filter by "my uploaded ones" ideally, but for now getting all is fine per current backend logic.
-            const quizRes = await fetch('https://online-learning-portal-ciy7.onrender.com/quizzes', { headers });
+            const quizRes = await fetch('/api/quizzes', { headers });
             if (quizRes.ok) setQuizzes(await quizRes.json());
 
         } catch (error) {
@@ -153,7 +153,7 @@ const TeacherDashboard: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this material?')) return;
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            await fetch(`https://online-learning-portal-ciy7.onrender.com/materials/${id}`, {
+            await fetch(`/api/materials/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${profile.token}` }
             });
@@ -167,7 +167,7 @@ const TeacherDashboard: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this quiz?')) return;
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            await fetch(`https://online-learning-portal-ciy7.onrender.com/quizzes/${id}`, {
+            await fetch(`/api/quizzes/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${profile.token}` }
             });
@@ -185,7 +185,7 @@ const TeacherDashboard: React.FC = () => {
     const handleViewResults = async (quizId: string) => {
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            const response = await fetch(`https://online-learning-portal-ciy7.onrender.com/quizzes/${quizId}/results`, {
+            const response = await fetch(`/api/quizzes/${quizId}/results`, {
                 headers: { 'Authorization': `Bearer ${profile.token}` }
             });
             if (response.ok) {

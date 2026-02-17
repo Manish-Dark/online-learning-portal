@@ -4,7 +4,7 @@ import Footer from '../components/Footer';
 
 const Home: React.FC = () => {
     // Add a timestamp to bust cache
-    const bgUrl = `https://online-learning-portal-ciy7.onrender.com/uploads/landing-bg.jpg?t=${new Date().getTime()}`;
+    const bgUrl = `/uploads/landing-bg.jpg?t=${new Date().getTime()}`;
     const [brandName, setBrandName] = React.useState('EduPortal');
 
     React.useEffect(() => {
@@ -12,7 +12,7 @@ const Home: React.FC = () => {
             try {
                 // We can import axios or just use fetch for zero-dependency if we didn't import axios in file
                 // But let's assume axios is available or use fetch
-                const res = await fetch('https://online-learning-portal-ciy7.onrender.com/api/site-settings');
+                const res = await fetch('/api/site-settings');
                 const data = await res.json();
                 if (data && data.brandName) {
                     setBrandName(data.brandName);
