@@ -14,7 +14,7 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'online-learning-portal',
-        allowed_formats: ['pdf', 'jpg', 'png', 'jpeg'],
+        allowed_formats: ['pdf', 'jpg', 'png', 'jpeg', 'txt'],
         resource_type: 'auto'
     }
 });
