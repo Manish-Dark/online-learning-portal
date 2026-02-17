@@ -17,7 +17,7 @@ const storage = new CloudinaryStorage({
         return {
             folder: 'online-learning-portal',
             resource_type: isPdf ? 'raw' : 'auto',
-            public_id: file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '') + '-' + Date.now(),
+            public_id: file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '') + '-' + Date.now() + (isPdf ? '.pdf' : ''),
         };
     },
 });
