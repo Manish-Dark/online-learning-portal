@@ -37,6 +37,14 @@ app.get('/api/download/:id', async (req, res) => {
             return res.status(404).json({ message: 'Material not found' });
         }
 
+
+
+        // Check if fileUrl is a remote URL (Cloudinary)
+        if (material.fileUrl && material.fileUrl.startsWith('http')) {
+            console.log('Redirecting to remote URL:', material.fileUrl);
+            return res.redirect(material.fileUrl);
+        }
+
         // Normalize fileUrl to use correct path separators for the OS
         const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
         const filePath = path.resolve(__dirname, normalizedFileUrl);
