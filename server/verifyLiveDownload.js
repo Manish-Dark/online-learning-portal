@@ -8,18 +8,16 @@ const verifyLiveDownload = async () => {
 
     try {
         const response = await axios.get(liveUrl, {
-            maxRedirects: 0,
+            maxRedirects: 5,
             validateStatus: null
         });
 
-        if (response.status === 302) {
-            console.log('✅ SUCCESS: Live Server returned 302 Redirect');
-            console.log(`   Location: ${response.headers.location}`);
+        if (response.status === 200) {
+            console.log('✅ SUCCESS: Final URL returned 200 OK');
+            console.log(`   Content-Type: ${response.headers['content-type']}`);
+            console.log(`   Content-Length: ${response.headers['content-length']}`);
         } else {
-            console.log(`❌ FAILED: Live Server returned status ${response.status}`);
-            if (response.status === 200) {
-                console.log('   (Content served instead of redirect)');
-            }
+            console.log(`❌ FAILED: Final URL returned status ${response.status}`);
         }
     } catch (err) {
         console.error('❌ Request Error:', err.message);

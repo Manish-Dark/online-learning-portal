@@ -3,6 +3,7 @@ const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 const uploadMaterial = async (req, res) => {
     try {
@@ -34,8 +35,29 @@ const uploadMaterial = async (req, res) => {
         } else {
             // It's a file
             if (file) {
-                // Cloudinary returns the URL in file.path (or file.secure_url)
-                materialData.fileUrl = file.path;
+                // If using MemoryStorage, we have file.buffer.
+                // We must upload to GridFS manually.
+                if (file.buffer) {
+                    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+                    const filename = `${Date.now()}-${file.originalname}`;
+                    const uploadStream = bucket.openUploadStream(filename, {
+                        contentType: file.mimetype
+                    });
+
+                    await new Promise((resolve, reject) => {
+                        uploadStream.on('error', (error) => reject(error));
+                        uploadStream.on('finish', () => resolve());
+                        uploadStream.end(file.buffer);
+                    });
+
+                    materialData.fileUrl = filename;
+                }
+                // Fallback or Cloudinary check (though route uses memory storage now)
+                else if (file.filename) {
+                    materialData.fileUrl = file.filename;
+                } else if (file.path) {
+                    materialData.fileUrl = file.path;
+                }
             }
         }
 
@@ -88,20 +110,50 @@ const downloadMaterial = async (req, res) => {
             return res.redirect(material.fileUrl);
         }
 
-        // Fallback for old local files (will likely fail on Vercel but kept for safety)
-        const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
-        const filePath = path.resolve(__dirname, '..', normalizedFileUrl);
+        // Try to serve from GridFS
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
 
-        res.download(filePath, material.title + path.extname(material.fileUrl), (err) => {
-            if (err) {
-                console.error('Download error:', err);
+        // Check if file exists in GridFS first to avoid stream errors on start
+        const cursor = bucket.find({ filename: material.fileUrl });
+        const files = await cursor.toArray();
+
+        if (files.length > 0) {
+            // GridFS file found
+            const file = files[0];
+            res.set('Content-Type', file.contentType || 'application/octet-stream');
+
+            const disposition = req.query.inline === 'true' ? 'inline' : 'attachment';
+            const filename = material.title + (path.extname(material.fileUrl) || '.pdf');
+
+            res.set('Content-Disposition', `${disposition}; filename="${filename}"`);
+
+            const downloadStream = bucket.openDownloadStreamByName(material.fileUrl);
+            downloadStream.pipe(res);
+        } else {
+            // Not in GridFS, try local filesystem (fallback)
+            const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
+            const filePath = path.resolve(__dirname, '..', normalizedFileUrl);
+
+            // Check if file exists locally
+            if (fs.existsSync(filePath)) {
+                const disposition = req.query.inline === 'true' ? 'inline' : 'attachment';
+                res.download(filePath, material.title + path.extname(material.fileUrl), {
+                    headers: {
+                        'Content-Disposition': `${disposition}; filename="${material.title + path.extname(material.fileUrl)}"`
+                    }
+                });
+            } else {
                 if (!res.headersSent) {
-                    res.status(500).send('Could not download file');
+                    res.status(404).json({ message: 'File not found on server' });
                 }
             }
-        });
+        }
+
     } catch (error) {
-        res.status(500).json({ message: 'Error downloading material', error: error.message });
+        console.error('Error downloading material:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Error downloading material', error: error.message });
+        }
     }
 };
 
@@ -156,11 +208,22 @@ const deleteMaterial = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this material' });
         }
 
-        // If it's a file, delete from filesystem ONLY if it's local
+        // If it's URL (Cloudinary), allow deletion (we can't delete from Cloudinary easily without library import here, skipping for now as it's just a link in DB effectively)
+        // If it's a file but not http...
         if (material.type === 'file' && material.fileUrl && !material.fileUrl.startsWith('http')) {
-            const filePath = path.resolve(__dirname, '..', material.fileUrl);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            // Try GridFS delete
+            const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
+            const cursor = bucket.find({ filename: material.fileUrl });
+            const files = await cursor.toArray();
+
+            if (files.length > 0) {
+                await bucket.delete(files[0]._id);
+            } else {
+                // Try local delete
+                const filePath = path.resolve(__dirname, '..', material.fileUrl);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
             }
         }
 

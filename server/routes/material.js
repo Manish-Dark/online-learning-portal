@@ -13,7 +13,9 @@ router.use((req, res, next) => {
 const { uploadMaterial, getMaterials, downloadMaterial, addLink } = require('../controllers/material');
 const { auth, teacherLimit } = require('../middleware/auth');
 
-const { storage } = require('../config/cloudinary');
+// const { storage } = require('../config/cloudinary');
+const storage = multer.memoryStorage();
+console.log('Storage Engine Type:', storage.constructor.name);
 
 const upload = multer({
     storage: storage,

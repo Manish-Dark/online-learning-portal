@@ -27,55 +27,23 @@ app.use((req, res, next) => {
 const StudyMaterial = require('./models/StudyMaterial');
 // const path = require('path'); // Removed duplicate
 
-// Direct download route at root level - MOVED TO TOP
-app.get('/api/download/:id', async (req, res) => {
-    try {
-        const material = await StudyMaterial.findById(req.params.id);
-        console.log('Root Download request for ID:', req.params.id);
+const { downloadMaterial } = require('./controllers/material');
 
-        if (!material) {
-            return res.status(404).json({ message: 'Material not found' });
-        }
-
-
-
-        // Check if fileUrl is a remote URL (Cloudinary)
-        if (material.fileUrl && material.fileUrl.startsWith('http')) {
-            console.log('Redirecting to remote URL:', material.fileUrl);
-            return res.redirect(material.fileUrl);
-        }
-
-        // Normalize fileUrl to use correct path separators for the OS
-        const normalizedFileUrl = material.fileUrl.split('/').join(path.sep);
-        const filePath = path.resolve(__dirname, normalizedFileUrl);
-        console.log('Attempting to download file from root route:', filePath);
-
-        res.download(filePath, material.title + path.extname(material.fileUrl), (err) => {
-            if (err) {
-                console.error('Download error:', err);
-                if (!res.headersSent) {
-                    res.status(500).send('Could not download file');
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Root download error:', error);
-        res.status(500).json({ message: 'Error downloading material', error: error.message });
-    }
-});
+// Direct download route using controller (handles GridFS, Cloudinary, Local)
+app.get('/api/download/:id', downloadMaterial);
 
 // Database Connection
 const seedAdmin = require('./seedAdmin');
 const seedTeacher = require('./seedTeacher');
 
 // Database Connection
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log('✅ MongoDB Connected');
-        seedAdmin();
-        seedTeacher();
-    })
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+const connectDB = require('./config/db');
+
+// Database Connection
+connectDB().then(() => {
+    seedAdmin();
+    seedTeacher();
+});
 
 const authRoutes = require('./routes/auth');
 
