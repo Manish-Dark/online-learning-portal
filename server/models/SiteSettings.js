@@ -21,6 +21,10 @@ const siteSettingsSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    backgroundUrl: {
+        type: String,
+        default: ''
+    },
     lastUpdated: {
         type: Date,
         default: Date.now

@@ -5,8 +5,8 @@ import { BASE_URL } from '../api';
 
 const Home: React.FC = () => {
     // Add a timestamp to bust cache
-    const bgUrl = `${BASE_URL}/uploads/landing-bg.jpg?t=${new Date().getTime()}`;
     const [brandName, setBrandName] = React.useState('EduPortal');
+    const [bgUrl, setBgUrl] = React.useState('');
 
     React.useEffect(() => {
         const fetchSettings = async () => {
@@ -15,8 +15,11 @@ const Home: React.FC = () => {
                 // But let's assume axios is available or use fetch
                 const res = await fetch(`${BASE_URL}/api/site-settings`);
                 const data = await res.json();
-                if (data && data.brandName) {
-                    setBrandName(data.brandName);
+                if (data) {
+                    if (data.brandName) setBrandName(data.brandName);
+                    if (data.backgroundUrl) {
+                        setBgUrl(data.backgroundUrl.startsWith('http') ? data.backgroundUrl : `${BASE_URL}${data.backgroundUrl}`);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch site settings', error);

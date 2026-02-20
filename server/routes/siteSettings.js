@@ -22,7 +22,7 @@ router.put('/', auth, async (req, res) => {
             return res.status(403).json({ message: 'Access denied. Admin only.' });
         }
 
-        const { githubLink, linkedinLink, copyrightText, brandName, logoUrl } = req.body;
+        const { githubLink, linkedinLink, copyrightText, brandName, logoUrl, backgroundUrl } = req.body;
 
         // Find and update or create if not exists (though getSettings ensures existence)
         let settings = await SiteSettings.findOne();
@@ -35,6 +35,7 @@ router.put('/', auth, async (req, res) => {
         if (copyrightText !== undefined) settings.copyrightText = copyrightText;
         if (brandName !== undefined) settings.brandName = brandName;
         if (logoUrl !== undefined) settings.logoUrl = logoUrl;
+        if (backgroundUrl !== undefined) settings.backgroundUrl = backgroundUrl;
         settings.lastUpdated = Date.now();
 
         await settings.save();

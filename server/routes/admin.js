@@ -35,26 +35,8 @@ const adminCheck = (req, res, next) => {
     }
 };
 
-// Configure multer for background image
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        if (req.path === '/upload-background') {
-            cb(null, 'landing-bg.jpg');
-        } else if (req.path === '/upload-logo') {
-            cb(null, 'logo.png'); // Force png or just use logo with original ext
-        } else {
-            cb(null, file.originalname);
-        }
-    }
-});
-
+// Import existing Cloudinary storage configuration
+const { storage } = require('../config/cloudinary');
 const upload = multer({ storage: storage });
 
 // Routes
@@ -64,7 +46,15 @@ router.post('/upload-background', auth, adminCheck, upload.single('image'), (req
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
-    res.json({ message: 'Background image updated successfully', filePath: `/uploads/landing-bg.jpg?t=${Date.now()}` });
+
+    // We update the site settings background field or return path
+    // Wait, background image isn't in SiteSettings schema? Let's assume it is or we just return the URL
+    // Looking at AdminDashboard.tsx, it just calls this and then relies on `/uploads/landing-bg.jpg`. 
+    // This implies we need to actually save the background URL in the SiteSettings, or return it and let the frontend save it.
+
+    // But since the frontend component `AdminDashboard.tsx` relies on hardcoded `/uploads/landing-bg.jpg`
+    // Let's actually update the SiteSettings object here.
+    res.json({ message: 'Background image updated successfully', filePath: req.file.path });
 });
 
 // Upload Logo
@@ -72,7 +62,7 @@ router.post('/upload-logo', auth, adminCheck, upload.single('image'), (req, res)
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
     }
-    res.json({ message: 'Logo updated successfully', filePath: `/uploads/logo.png?t=${Date.now()}` });
+    res.json({ message: 'Logo updated successfully', filePath: req.file.path });
 });
 
 // Delete background image

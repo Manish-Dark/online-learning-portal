@@ -8,6 +8,7 @@ const AdminDashboard: React.FC = () => {
     const [siteSettings, setSiteSettings] = useState({
         brandName: '',
         logoUrl: '',
+        backgroundUrl: '',
         githubLink: '',
         linkedinLink: '',
         copyrightText: ''
@@ -108,7 +109,13 @@ const AdminDashboard: React.FC = () => {
         formData.append('image', file);
 
         try {
-            await API.post('/admin/upload-background', formData);
+            const res = await API.post('/admin/upload-background', formData);
+
+            // Update local state and auto-save the new background URL to site settings
+            const newBgUrl = res.data.filePath;
+            setSiteSettings(prev => ({ ...prev, backgroundUrl: newBgUrl }));
+            await API.put('/site-settings', { ...siteSettings, backgroundUrl: newBgUrl });
+
             alert('Background image updated!');
             window.location.reload();
         } catch (error) {
@@ -121,6 +128,8 @@ const AdminDashboard: React.FC = () => {
         if (!window.confirm("Are you sure you want to remove the background image?")) return;
         try {
             await API.delete('/admin/background');
+            setSiteSettings(prev => ({ ...prev, backgroundUrl: '' }));
+            await API.put('/site-settings', { ...siteSettings, backgroundUrl: '' });
             alert('Background image removed!');
             window.location.reload();
         } catch (error) {
@@ -195,16 +204,20 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="mb-6">
                     <h4 className="text-md font-semibold mb-2">Background Image</h4>
-                    {/* Preview Background */}
                     <div className="mb-4 h-48 w-full bg-gray-200 rounded-lg overflow-hidden relative border flex items-center justify-center">
-                        <span className="text-gray-500 absolute z-0">No Background Image</span>
-                        <img
-                            src={`${BASE_URL}/uploads/landing-bg.jpg?t=${Date.now()}`}
-                            alt="Background Preview"
-                            className="w-full h-full object-cover relative z-10"
-                            onError={(e) => (e.currentTarget.style.display = 'none')}
-                        />
-                        <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs p-1 z-20">Current Background</div>
+                        {siteSettings.backgroundUrl ? (
+                            <>
+                                <img
+                                    src={siteSettings.backgroundUrl.startsWith('http') ? siteSettings.backgroundUrl : `${BASE_URL}${siteSettings.backgroundUrl}`}
+                                    alt="Background Preview"
+                                    className="w-full h-full object-cover relative z-10"
+                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                />
+                                <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs p-1 z-20">Current Background</div>
+                            </>
+                        ) : (
+                            <span className="text-gray-500 absolute z-0">No Background Image</span>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-4">
