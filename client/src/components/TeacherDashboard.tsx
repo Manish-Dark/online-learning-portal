@@ -1,5 +1,5 @@
 import React from 'react';
-import API, { BASE_URL } from '../api';
+import { BASE_URL } from '../api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // Import API fetch if needed
