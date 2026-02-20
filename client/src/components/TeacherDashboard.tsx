@@ -22,12 +22,17 @@ const TeacherDashboard: React.FC = () => {
     }
 
     const [materialData, setMaterialData] = React.useState({ title: '', description: '', course: 'B.Tech', branch: 'CSE', linkUrl: '' });
-    const [file, setFile] = React.useState<File | null>(null);
+    const [files, setFiles] = React.useState<FileList | null>(null);
     const [uploadStatus, setUploadStatus] = React.useState('');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setFile(e.target.files[0]);
+        if (e.target.files && e.target.files.length > 0) {
+            setFiles(e.target.files);
+            // Auto-set title from first filename if title is empty
+            if (!materialData.title) {
+                const name = e.target.files[0].name.replace(/\.[^/.]+$/, "");
+                setMaterialData(prev => ({ ...prev, title: name }));
+            }
         }
     };
 
@@ -79,8 +84,13 @@ const TeacherDashboard: React.FC = () => {
 
             } else {
                 // Upload File
-                if (!file) {
-                    setUploadStatus('Please select a file');
+                if (!files || files.length === 0) {
+                    setUploadStatus('Please select at least one file');
+                    return;
+                }
+
+                if (files.length > 10) {
+                    setUploadStatus('You can upload a maximum of 10 files at once.');
                     return;
                 }
 
@@ -90,7 +100,13 @@ const TeacherDashboard: React.FC = () => {
                 formData.append('course', materialData.course);
                 formData.append('branch', materialData.branch);
                 formData.append('type', 'file');
-                formData.append('file', file);
+
+                // Append all files
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+
+                setUploadStatus('Uploading...');
 
                 response = await fetch('/api/materials/upload', {
                     method: 'POST',
@@ -102,9 +118,14 @@ const TeacherDashboard: React.FC = () => {
             }
 
             if (response.ok) {
-                setUploadStatus('Material uploaded/linked successfully!');
+                setUploadStatus('Materials uploaded/linked successfully!');
                 setMaterialData({ title: '', description: '', course: 'B.Tech', branch: 'CSE', linkUrl: '' });
-                setFile(null);
+                setFiles(null);
+
+                // Reset file input value
+                const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+                if (fileInput) fileInput.value = '';
+
                 fetchResources();
                 setTimeout(() => { setActiveOption('none'); setUploadStatus(''); }, 2000);
             } else {
@@ -322,14 +343,26 @@ const TeacherDashboard: React.FC = () => {
 
                         {activeOption === 'upload' && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">PDF File</label>
+                                <label className="block text-sm font-medium text-gray-700">PDF Files (Max 10)</label>
                                 <input
+                                    id="file-upload"
                                     type="file"
                                     accept="application/pdf"
+                                    multiple
                                     className="mt-1 block w-full"
                                     onChange={handleFileChange}
-                                    required
+                                    required={activeOption === 'upload'}
                                 />
+                                {files && files.length > 0 && (
+                                    <div className="mt-2 text-sm text-gray-600">
+                                        Selected {files.length} file(s):
+                                        <ul className="list-disc pl-5 mt-1">
+                                            {Array.from(files).map((f, i) => (
+                                                <li key={i}>{f.name}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         )}
 

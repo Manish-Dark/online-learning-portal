@@ -30,7 +30,7 @@ const upload = multer({
 
 console.log('addLink Type:', typeof addLink);
 
-router.post('/upload', auth, teacherLimit, upload.single('file'), uploadMaterial);
+router.post('/upload', auth, teacherLimit, upload.array('files', 10), uploadMaterial);
 router.post('/link', auth, teacherLimit, addLink); // New route for links (JSON body)
 router.get('/', auth, getMaterials);
 router.delete('/:id', auth, teacherLimit, require('../controllers/material').deleteMaterial);

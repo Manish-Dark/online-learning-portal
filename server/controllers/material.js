@@ -8,44 +8,64 @@ const mongoose = require('mongoose');
 const uploadMaterial = async (req, res) => {
     try {
         console.log('Upload Request Body:', req.body);
-        console.log('Upload Request File:', req.file);
+        console.log('Upload Request Files (count):', req.files?.length);
 
         const { title, description, course, branch, type, linkUrl } = req.body;
-        const file = req.file;
+        const files = req.files;
 
         // Validation based on type
-        if (type === 'file' && !file) {
-            return res.status(400).json({ message: 'No file uploaded for file type material' });
+        if (type === 'file' && (!files || files.length === 0)) {
+            return res.status(400).json({ message: 'No files uploaded for file type material' });
         }
         if (type === 'link' && !linkUrl) {
             return res.status(400).json({ message: 'Link URL is required for link type material' });
         }
 
-        const materialData = {
-            title,
-            description,
-            type: type || 'file', // Default to file if not provided (backward compatibility)
-            course,
-            branch,
-            uploadedBy: req.userId
-        };
-
         if (type === 'link') {
-            materialData.linkUrl = linkUrl;
+            // Handle Link (Single)
+            const materialData = {
+                title,
+                description,
+                type: 'link',
+                linkUrl,
+                course,
+                branch,
+                uploadedBy: req.userId
+            };
+            const material = new StudyMaterial(materialData);
+            await material.save();
+            return res.status(201).json({ message: 'Link added successfully', material });
         } else {
-            // It's a file
-            if (file) {
-                // If using MemoryStorage, we have file.buffer.
-                // We must upload to GridFS manually.
+            // Handle Files (Multiple)
+            const uploadedMaterials = [];
+
+            for (const file of files) {
+                // Determine Title: Use form title if single file, else use filename
+                let materialTitle = title;
+                if (files.length > 1) {
+                    // Use filename without extension
+                    materialTitle = path.parse(file.originalname).name;
+                } else {
+                    // If title is empty, fallback to filename
+                    materialTitle = title || path.parse(file.originalname).name;
+                }
+
+                const materialData = {
+                    title: materialTitle,
+                    description,
+                    type: 'file',
+                    course,
+                    branch,
+                    uploadedBy: req.userId
+                };
+
                 if (file.buffer) {
                     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
                     const filename = `${Date.now()}-${file.originalname}`;
 
-
-
                     const uploadStream = bucket.openUploadStream(filename, {
                         contentType: file.mimetype,
-                        metadata: { contentType: file.mimetype } // Store in metadata as well
+                        metadata: { contentType: file.mimetype }
                     });
 
                     await new Promise((resolve, reject) => {
@@ -56,21 +76,16 @@ const uploadMaterial = async (req, res) => {
 
                     materialData.fileUrl = filename;
                 }
-                // Fallback or Cloudinary check (though route uses memory storage now)
-                else if (file.filename) {
-                    materialData.fileUrl = file.filename;
-                } else if (file.path) {
-                    materialData.fileUrl = file.path;
-                }
+
+                const material = new StudyMaterial(materialData);
+                await material.save();
+                uploadedMaterials.push(material);
             }
+            res.status(201).json({ message: 'Materials uploaded successfully', materials: uploadedMaterials });
         }
 
-        const material = new StudyMaterial(materialData);
-
-        await material.save();
-        res.status(201).json({ message: 'Material uploaded successfully', material });
     } catch (error) {
-
+        console.error('Error uploading material:', error);
         res.status(500).json({ message: 'Error uploading material', error: error.message });
     }
 };

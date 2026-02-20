@@ -142,9 +142,15 @@ const AdminDashboard: React.FC = () => {
             const res = await API.post('/admin/upload-logo', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
-            // Update settings state to show new logo immediately if we were displaying it
-            setSiteSettings(prev => ({ ...prev, logoUrl: res.data.filePath }));
-            alert('Logo updated! Refresh to see changes.');
+
+            // Update local state
+            const newLogoUrl = res.data.filePath;
+            setSiteSettings(prev => ({ ...prev, logoUrl: newLogoUrl }));
+
+            // Auto-save the new logo URL to site settings
+            await API.put('/api/site-settings', { ...siteSettings, logoUrl: newLogoUrl });
+
+            alert('Logo updated and saved! Refresh to see changes across the site.');
         } catch (error) {
             console.error('Error uploading logo:', error);
             alert('Failed to update logo.');
@@ -191,6 +197,17 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="mb-6">
                     <h4 className="text-md font-semibold mb-2">Background Image</h4>
+                    {/* Preview Background */}
+                    <div className="mb-4 h-48 w-full bg-gray-200 rounded-lg overflow-hidden relative border">
+                        <img
+                            src={`/uploads/landing-bg.jpg?t=${Date.now()}`}
+                            alt="Background Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/800x400?text=No+Background+Image')}
+                        />
+                        <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs p-1">Current Background</div>
+                    </div>
+
                     <div className="flex items-center space-x-4">
                         <label className="block text-sm font-medium text-gray-700">
                             Upload Background Image
@@ -217,6 +234,24 @@ const AdminDashboard: React.FC = () => {
 
                 <div className="mb-6 border-t pt-6">
                     <h4 className="text-md font-semibold mb-2">Brand Logo</h4>
+
+                    {/* Preview Logo */}
+                    <div className="mb-4 flex items-center space-x-4">
+                        <div className="h-16 w-auto bg-gray-100 p-2 rounded border">
+                            {siteSettings.logoUrl ? (
+                                <img
+                                    src={siteSettings.logoUrl}
+                                    alt="Logo Preview"
+                                    className="h-full w-auto"
+                                    onError={(e) => (e.currentTarget.style.display = 'none')}
+                                />
+                            ) : (
+                                <span className="text-gray-400 text-sm">No Logo</span>
+                            )}
+                        </div>
+                        <span className="text-sm text-gray-500">Current Logo Preview</span>
+                    </div>
+
                     <div className="flex items-center space-x-4">
                         <label className="block text-sm font-medium text-gray-700">
                             Upload Logo
@@ -239,6 +274,7 @@ const AdminDashboard: React.FC = () => {
                             Remove
                         </button>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">Uploading a logo will automatically update the site settings.</p>
                 </div>
 
                 <div className="border-t pt-6">
