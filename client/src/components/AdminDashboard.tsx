@@ -108,12 +108,9 @@ const AdminDashboard: React.FC = () => {
         formData.append('image', file);
 
         try {
-            await API.post('/admin/upload-background', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            alert('Background image updated! Refresh the Landing Page to see changes.');
+            await API.post('/admin/upload-background', formData);
+            alert('Background image updated!');
+            window.location.reload();
         } catch (error) {
             console.error('Error uploading background:', error);
             alert('Failed to update background image.');
@@ -124,7 +121,8 @@ const AdminDashboard: React.FC = () => {
         if (!window.confirm("Are you sure you want to remove the background image?")) return;
         try {
             await API.delete('/admin/background');
-            alert('Background image removed! Refresh the Landing Page to see changes.');
+            alert('Background image removed!');
+            window.location.reload();
         } catch (error) {
             console.error('Error deleting background:', error);
             alert('Failed to delete background image.');
@@ -139,9 +137,7 @@ const AdminDashboard: React.FC = () => {
         formData.append('image', file);
 
         try {
-            const res = await API.post('/admin/upload-logo', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const res = await API.post('/admin/upload-logo', formData);
 
             // Update local state
             const newLogoUrl = res.data.filePath;
@@ -150,7 +146,8 @@ const AdminDashboard: React.FC = () => {
             // Auto-save the new logo URL to site settings
             await API.put('/site-settings', { ...siteSettings, logoUrl: newLogoUrl });
 
-            alert('Logo updated and saved! Refresh to see changes across the site.');
+            alert('Logo updated and saved!');
+            window.location.reload();
         } catch (error) {
             console.error('Error uploading logo:', error);
             alert('Failed to update logo.');
@@ -163,6 +160,7 @@ const AdminDashboard: React.FC = () => {
             await API.delete('/admin/logo');
             setSiteSettings(prev => ({ ...prev, logoUrl: '' }));
             alert('Logo removed!');
+            window.location.reload();
         } catch (error) {
             console.error('Error deleting logo:', error);
             alert('Failed to delete logo.');
@@ -198,14 +196,15 @@ const AdminDashboard: React.FC = () => {
                 <div className="mb-6">
                     <h4 className="text-md font-semibold mb-2">Background Image</h4>
                     {/* Preview Background */}
-                    <div className="mb-4 h-48 w-full bg-gray-200 rounded-lg overflow-hidden relative border">
+                    <div className="mb-4 h-48 w-full bg-gray-200 rounded-lg overflow-hidden relative border flex items-center justify-center">
+                        <span className="text-gray-500 absolute z-0">No Background Image</span>
                         <img
                             src={`/uploads/landing-bg.jpg?t=${Date.now()}`}
                             alt="Background Preview"
-                            className="w-full h-full object-cover"
-                            onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/800x400?text=No+Background+Image')}
+                            className="w-full h-full object-cover relative z-10"
+                            onError={(e) => (e.currentTarget.style.display = 'none')}
                         />
-                        <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs p-1">Current Background</div>
+                        <div className="absolute bottom-0 left-0 bg-black/50 text-white text-xs p-1 z-20">Current Background</div>
                     </div>
 
                     <div className="flex items-center space-x-4">
