@@ -25,7 +25,7 @@ const AdminDashboard: React.FC = () => {
             setPendingTeachers(teachersRes.data);
             const studentsRes = await API.get('/admin/students/pending');
             setPendingStudents(studentsRes.data);
-            const settingsRes = await API.get('/api/site-settings');
+            const settingsRes = await API.get('/site-settings');
             setSiteSettings(settingsRes.data);
         } catch (error) {
             console.error(error);
@@ -148,7 +148,7 @@ const AdminDashboard: React.FC = () => {
             setSiteSettings(prev => ({ ...prev, logoUrl: newLogoUrl }));
 
             // Auto-save the new logo URL to site settings
-            await API.put('/api/site-settings', { ...siteSettings, logoUrl: newLogoUrl });
+            await API.put('/site-settings', { ...siteSettings, logoUrl: newLogoUrl });
 
             alert('Logo updated and saved! Refresh to see changes across the site.');
         } catch (error) {
@@ -172,7 +172,7 @@ const AdminDashboard: React.FC = () => {
     const handleUpdateSettings = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await API.put('/api/site-settings', siteSettings);
+            await API.put('/site-settings', siteSettings);
             alert('Site settings updated successfully!');
         } catch (error) {
             console.error('Error updating site settings:', error);
