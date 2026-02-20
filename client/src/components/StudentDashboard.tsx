@@ -1,4 +1,5 @@
 import React from 'react';
+import API, { BASE_URL } from '../api';
 import { Link } from 'react-router-dom';
 
 const StudentDashboard: React.FC = () => {
@@ -18,7 +19,7 @@ const StudentDashboard: React.FC = () => {
             const token = profile.token;
             if (!token) return;
 
-            const response = await fetch('/api/materials', {
+            const response = await fetch(`${BASE_URL}/api/materials`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -35,7 +36,7 @@ const StudentDashboard: React.FC = () => {
             const token = profile.token;
             if (!token) return;
 
-            const response = await fetch('/api/auth/me', {
+            const response = await fetch(`${BASE_URL}/api/auth/me`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -167,7 +168,7 @@ const StudentDashboard: React.FC = () => {
                                     ) : (
                                         <>
                                             <a
-                                                href={`/api/materials/download/${material._id}?inline=true`}
+                                                href={`${BASE_URL}/api/materials/download/${material._id}?inline=true`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="flex-1 text-center bg-indigo-100 text-indigo-700 py-2 rounded hover:bg-indigo-200 transition"
@@ -175,7 +176,7 @@ const StudentDashboard: React.FC = () => {
                                                 View
                                             </a>
                                             <a
-                                                href={`/api/materials/download/${material._id}`}
+                                                href={`${BASE_URL}/api/materials/download/${material._id}`}
                                                 className="flex-1 text-center bg-green-100 text-green-700 py-2 rounded hover:bg-green-200 transition"
                                             >
                                                 Download
@@ -207,7 +208,7 @@ const QuizSection: React.FC = () => {
                 const token = profile.token;
                 // Fetch all quizzes for now. 
                 // Future improvement: Filter by student's course/branch if available in profile
-                const response = await fetch('/api/quizzes', {
+                const response = await fetch(`${BASE_URL}/api/quizzes`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (response.ok) {

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Footer from '../components/Footer';
+import { BASE_URL } from '../api';
 
 const Home: React.FC = () => {
     // Add a timestamp to bust cache
-    const bgUrl = `/uploads/landing-bg.jpg?t=${new Date().getTime()}`;
+    const bgUrl = `${BASE_URL}/uploads/landing-bg.jpg?t=${new Date().getTime()}`;
     const [brandName, setBrandName] = React.useState('EduPortal');
 
     React.useEffect(() => {
@@ -12,7 +13,7 @@ const Home: React.FC = () => {
             try {
                 // We can import axios or just use fetch for zero-dependency if we didn't import axios in file
                 // But let's assume axios is available or use fetch
-                const res = await fetch('/api/site-settings');
+                const res = await fetch(`${BASE_URL}/api/site-settings`);
                 const data = await res.json();
                 if (data && data.brandName) {
                     setBrandName(data.brandName);

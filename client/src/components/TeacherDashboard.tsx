@@ -1,4 +1,5 @@
 import React from 'react';
+import API, { BASE_URL } from '../api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // Import API fetch if needed
@@ -67,7 +68,7 @@ const TeacherDashboard: React.FC = () => {
                 }
 
                 // Send JSON for link
-                response = await fetch('/api/materials/link', {
+                response = await fetch(`${BASE_URL}/api/materials/link`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -108,7 +109,7 @@ const TeacherDashboard: React.FC = () => {
 
                 setUploadStatus('Uploading...');
 
-                response = await fetch('/api/materials/upload', {
+                response = await fetch(`${BASE_URL}/api/materials/upload`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -154,7 +155,7 @@ const TeacherDashboard: React.FC = () => {
             const headers = { 'Authorization': `Bearer ${token}` };
 
             // Fetch Materials
-            const matRes = await fetch('/api/materials', { headers });
+            const matRes = await fetch(`${BASE_URL}/api/materials`, { headers });
             if (matRes.ok) setMaterials(await matRes.json());
 
             // Fetch Quizzes (Teacher sees all or we need a specific teacher route? 
@@ -162,7 +163,7 @@ const TeacherDashboard: React.FC = () => {
             // Let's check getQuizzes logic: IF userRole is student checking completion. 
             // IF teacher, it returns all (filtered by nothing if no queries).
             // We might want to filter by "my uploaded ones" ideally, but for now getting all is fine per current backend logic.
-            const quizRes = await fetch('/api/quizzes', { headers });
+            const quizRes = await fetch(`${BASE_URL}/api/quizzes`, { headers });
             if (quizRes.ok) setQuizzes(await quizRes.json());
 
         } catch (error) {
@@ -174,7 +175,7 @@ const TeacherDashboard: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this material?')) return;
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            await fetch(`/api/materials/${id}`, {
+            await fetch(`${BASE_URL}/api/materials/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${profile.token}` }
             });
@@ -188,7 +189,7 @@ const TeacherDashboard: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this quiz?')) return;
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            await fetch(`/api/quizzes/${id}`, {
+            await fetch(`${BASE_URL}/api/quizzes/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${profile.token}` }
             });
@@ -206,7 +207,7 @@ const TeacherDashboard: React.FC = () => {
     const handleViewResults = async (quizId: string) => {
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            const response = await fetch(`/api/quizzes/${quizId}/results`, {
+            const response = await fetch(`${BASE_URL}/api/quizzes/${quizId}/results`, {
                 headers: { 'Authorization': `Bearer ${profile.token}` }
             });
             if (response.ok) {

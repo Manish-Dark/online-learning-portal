@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import API, { BASE_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, BookOpen, User } from 'lucide-react';
-import axios from 'axios';
 import { useState, useEffect } from 'react';
 
 const Navbar: React.FC = () => {
@@ -14,7 +15,7 @@ const Navbar: React.FC = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await axios.get('/api/site-settings');
+                const res = await API.get('/site-settings');
                 if (res.data) {
                     if (res.data.brandName) setBrandName(res.data.brandName);
                     if (res.data.logoUrl) setLogoUrl(res.data.logoUrl);
@@ -32,7 +33,7 @@ const Navbar: React.FC = () => {
                 <div className="flex justify-between h-16">
                     <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
                         {logoUrl ? (
-                            <img src={logoUrl} alt="Logo" className="h-10 w-auto mr-2" />
+                            <img src={logoUrl.startsWith('http') ? logoUrl : `${BASE_URL}${logoUrl} `} alt="Logo" className="h-10 w-auto mr-2" />
                         ) : (
                             <BookOpen className="h-8 w-8 text-primary" />
                         )}

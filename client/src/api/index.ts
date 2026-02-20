@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API = axios.create({ baseURL: '/api' });
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API = axios.create({ baseURL: API_BASE_URL });
+export const BASE_URL = API_BASE_URL.replace(/\/api$/, '');
 
 API.interceptors.request.use((req) => {
     if (localStorage.getItem('profile')) {

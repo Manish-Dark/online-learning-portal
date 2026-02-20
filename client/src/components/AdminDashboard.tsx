@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import API from '../api';
+import API, { BASE_URL } from '../api';
 
 const AdminDashboard: React.FC = () => {
     const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0 });
@@ -199,7 +199,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="mb-4 h-48 w-full bg-gray-200 rounded-lg overflow-hidden relative border flex items-center justify-center">
                         <span className="text-gray-500 absolute z-0">No Background Image</span>
                         <img
-                            src={`/uploads/landing-bg.jpg?t=${Date.now()}`}
+                            src={`${BASE_URL}/uploads/landing-bg.jpg?t=${Date.now()}`}
                             alt="Background Preview"
                             className="w-full h-full object-cover relative z-10"
                             onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -239,7 +239,7 @@ const AdminDashboard: React.FC = () => {
                         <div className="h-16 w-auto bg-gray-100 p-2 rounded border">
                             {siteSettings.logoUrl ? (
                                 <img
-                                    src={siteSettings.logoUrl}
+                                    src={siteSettings.logoUrl.startsWith('http') ? siteSettings.logoUrl : `${BASE_URL}${siteSettings.logoUrl}`}
                                     alt="Logo Preview"
                                     className="h-full w-auto"
                                     onError={(e) => (e.currentTarget.style.display = 'none')}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Github, Linkedin } from 'lucide-react';
-import axios from 'axios';
+import { Link } from 'react-router-dom';
+import API from '../api';
 
 interface SiteSettings {
     githubLink: string;
@@ -23,7 +24,7 @@ const Footer: React.FC = () => {
         const fetchSettings = async () => {
             try {
                 // Adjust URL if needed based on your API setup
-                const res = await axios.get('/api/site-settings');
+                const res = await API.get('/site-settings');
                 if (res.data) {
                     setSettings(res.data);
                 }
