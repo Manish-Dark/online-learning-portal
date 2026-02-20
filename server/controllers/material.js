@@ -40,8 +40,12 @@ const uploadMaterial = async (req, res) => {
                 if (file.buffer) {
                     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
                     const filename = `${Date.now()}-${file.originalname}`;
+
+
+
                     const uploadStream = bucket.openUploadStream(filename, {
-                        contentType: file.mimetype
+                        contentType: file.mimetype,
+                        metadata: { contentType: file.mimetype } // Store in metadata as well
                     });
 
                     await new Promise((resolve, reject) => {
@@ -66,14 +70,14 @@ const uploadMaterial = async (req, res) => {
         await material.save();
         res.status(201).json({ message: 'Material uploaded successfully', material });
     } catch (error) {
-        console.error('Upload Error:', error);
+
         res.status(500).json({ message: 'Error uploading material', error: error.message });
     }
 };
 
 const addLink = async (req, res) => {
     try {
-        console.log('Add Link Request Body:', req.body);
+
         const { title, description, course, branch, linkUrl } = req.body;
 
         if (!linkUrl) {
@@ -120,7 +124,28 @@ const downloadMaterial = async (req, res) => {
         if (files.length > 0) {
             // GridFS file found
             const file = files[0];
-            res.set('Content-Type', file.contentType || 'application/octet-stream');
+
+
+
+            // Determine Content-Type
+            let contentType = file.contentType;
+            if (!contentType && file.metadata && file.metadata.contentType) {
+                contentType = file.metadata.contentType;
+            }
+            // Fallback to extension-based MIME type
+            if (!contentType || contentType === 'application/octet-stream') {
+                const ext = path.extname(material.fileUrl).toLowerCase();
+
+
+                if (ext === '.pdf') contentType = 'application/pdf';
+                else if (ext === '.txt') contentType = 'text/plain';
+                else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+                else if (ext === '.png') contentType = 'image/png';
+                else if (ext === '.doc' || ext === '.docx') contentType = 'application/msword';
+            }
+
+
+            res.set('Content-Type', contentType || 'application/octet-stream');
 
             const disposition = req.query.inline === 'true' ? 'inline' : 'attachment';
             const filename = material.title + (path.extname(material.fileUrl) || '.pdf');
@@ -137,6 +162,17 @@ const downloadMaterial = async (req, res) => {
             // Check if file exists locally
             if (fs.existsSync(filePath)) {
                 const disposition = req.query.inline === 'true' ? 'inline' : 'attachment';
+
+                // Determine Content-Type for local file
+                let contentType = 'application/octet-stream';
+                const ext = path.extname(material.fileUrl).toLowerCase();
+
+                if (ext === '.pdf') contentType = 'application/pdf';
+                else if (ext === '.txt') contentType = 'text/plain';
+                else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+                else if (ext === '.png') contentType = 'image/png';
+
+                res.set('Content-Type', contentType);
                 res.download(filePath, material.title + path.extname(material.fileUrl), {
                     headers: {
                         'Content-Disposition': `${disposition}; filename="${material.title + path.extname(material.fileUrl)}"`

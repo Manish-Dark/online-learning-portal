@@ -16,7 +16,8 @@ const storage = new GridFsStorage({
 
         return {
             bucketName: 'uploads', // This matches the collection name 'uploads.files'
-            filename: `${Date.now()}-${file.originalname}`
+            filename: `${Date.now()}-${file.originalname}`,
+            contentType: file.mimetype // Explicitly save content type
         };
     }
 });
