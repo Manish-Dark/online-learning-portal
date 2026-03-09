@@ -17,16 +17,42 @@ const { auth, teacherLimit } = require('../middleware/auth');
 const storage = multer.memoryStorage();
 console.log('Storage Engine Type:', storage.constructor.name);
 
+const ALLOWED_MIMETYPES = new Set([
+    // PDF
+    'application/pdf',
+    // Word
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    // PowerPoint
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // Excel
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    // Text
+    'text/plain',
+    // Images
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    // ZIP / RAR (for bundled materials)
+    'application/zip',
+    'application/x-zip-compressed',
+]);
+
 const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/pdf' || file.mimetype === 'text/plain') {
+        if (ALLOWED_MIMETYPES.has(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error('Only PDFs and Text files are allowed'), false);
+            cb(new Error(`File type "${file.mimetype}" is not allowed. Supported: PDF, Word, PowerPoint, Excel, TXT, Images`), false);
         }
-    }
+    },
+    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB per file
 });
+
 
 console.log('addLink Type:', typeof addLink);
 

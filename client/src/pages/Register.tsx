@@ -1,13 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signUp } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import API from '../api';
+
+interface AcademicCourse {
+    name: string;
+    branches: string[];
+}
 
 const Register: React.FC = () => {
     const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'student', course: '', branch: '', fatherName: '', motherName: '' });
     const [error, setError] = useState('');
+    const [academicCourses, setAcademicCourses] = useState<AcademicCourse[]>([]);
     const navigate = useNavigate();
     const { login } = useAuth();
+
+    useEffect(() => {
+        API.get('/site-settings')
+            .then(res => {
+                if (res.data.academicCourses && res.data.academicCourses.length > 0) {
+                    setAcademicCourses(res.data.academicCourses);
+                }
+            })
+            .catch(err => console.error('Failed to load courses:', err));
+    }, []);
+
+    const selectedCourseData = academicCourses.find(c => c.name === formData.course);
+    const hasBranches = selectedCourseData && selectedCourseData.branches.length > 0;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -76,21 +96,26 @@ const Register: React.FC = () => {
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
+
+                        {/* Dynamic Course Dropdown */}
                         <div>
                             <select
                                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                                 value={formData.course}
-                                onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, course: e.target.value, branch: '' })}
                                 required
                             >
-                                <option value="">Select Course</option>
-                                <option value="B.Tech">B.Tech</option>
-                                <option value="M.Tech">M.Tech</option>
-                                <option value="BCA">BCA</option>
-                                <option value="MCA">MCA</option>
+                                <option value="">
+                                    {academicCourses.length === 0 ? 'Loading courses...' : 'Select Course'}
+                                </option>
+                                {academicCourses.map(c => (
+                                    <option key={c.name} value={c.name}>{c.name}</option>
+                                ))}
                             </select>
                         </div>
-                        {(formData.course === 'B.Tech' || formData.course === 'M.Tech') && (
+
+                        {/* Dynamic Branch Dropdown – only shown if selected course has branches */}
+                        {hasBranches && (
                             <div>
                                 <select
                                     className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
@@ -99,14 +124,13 @@ const Register: React.FC = () => {
                                     required
                                 >
                                     <option value="">Select Branch</option>
-                                    <option value="CSE">CSE</option>
-                                    <option value="CSD">CSD</option>
-                                    <option value="AIML">AIML</option>
-                                    <option value="Mechanical">Mechanical</option>
-                                    <option value="Civil">Civil</option>
+                                    {selectedCourseData!.branches.map(b => (
+                                        <option key={b} value={b}>{b}</option>
+                                    ))}
                                 </select>
                             </div>
                         )}
+
                         {formData.role === 'student' && (
                             <>
                                 <div>

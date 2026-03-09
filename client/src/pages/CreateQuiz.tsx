@@ -1,16 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../api';
+
+interface AcademicCourse {
+    name: string;
+    branches: string[];
+}
 
 const CreateQuiz: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
     const navigate = useNavigate();
     const [title, setTitle] = useState('');
     const [questions, setQuestions] = useState([{ questionText: '', options: ['', '', '', ''], correctAnswer: '' }]);
+    const [academicCourses, setAcademicCourses] = useState<AcademicCourse[]>([]);
 
-    // Static Selection State
+    // Dynamic selection states
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedBranch, setSelectedBranch] = useState('');
+
+    useEffect(() => {
+        API.get('/site-settings')
+            .then(res => {
+                if (res.data.academicCourses && res.data.academicCourses.length > 0) {
+                    setAcademicCourses(res.data.academicCourses);
+                }
+            })
+            .catch(err => console.error('Failed to load courses:', err));
+    }, []);
+
+    const selectedCourseData = academicCourses.find(c => c.name === selectedCourse);
+    const hasBranches = selectedCourseData && selectedCourseData.branches.length > 0;
 
     const handleQuestionChange = (index: number, field: string, value: string) => {
         const newQuestions = [...questions];
@@ -35,11 +54,11 @@ const CreateQuiz: React.FC = () => {
         // Validation for general quiz
         if (courseId === 'general') {
             if (!selectedCourse) {
-                alert('Please select a Target Course (e.g., B.Tech).');
+                alert('Please select a Target Course.');
                 return;
             }
-            if ((selectedCourse === 'B.Tech' || selectedCourse === 'M.Tech') && !selectedBranch) {
-                alert('Please select a Target Branch.');
+            if (hasBranches && !selectedBranch) {
+                alert('Please select a Target Branch for this course.');
                 return;
             }
         }
@@ -50,7 +69,7 @@ const CreateQuiz: React.FC = () => {
                 // If specific course ID exists (from URL), send it. Else send string course/branch.
                 courseId: courseId !== 'general' ? courseId : undefined,
                 course: courseId === 'general' ? selectedCourse : undefined,
-                branch: selectedBranch,
+                branch: selectedBranch || undefined,
                 questions
             });
 
@@ -76,23 +95,26 @@ const CreateQuiz: React.FC = () => {
                     <div className="bg-white p-6 rounded-lg shadow border border-gray-200 space-y-4">
                         <h3 className="font-semibold text-lg">Target Audience</h3>
 
+                        {/* Dynamic Course Dropdown */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Target Course</label>
                             <select
                                 className="mt-1 block w-full border border-gray-300 rounded-md p-2"
                                 value={selectedCourse}
-                                onChange={(e) => setSelectedCourse(e.target.value)}
+                                onChange={(e) => { setSelectedCourse(e.target.value); setSelectedBranch(''); }}
                                 required
                             >
-                                <option value="">Select Course</option>
-                                <option value="B.Tech">B.Tech</option>
-                                <option value="M.Tech">M.Tech</option>
-                                <option value="BCA">BCA</option>
-                                <option value="MCA">MCA</option>
+                                <option value="">
+                                    {academicCourses.length === 0 ? 'Loading courses...' : 'Select Course'}
+                                </option>
+                                {academicCourses.map(c => (
+                                    <option key={c.name} value={c.name}>{c.name}</option>
+                                ))}
                             </select>
                         </div>
 
-                        {(selectedCourse === 'B.Tech' || selectedCourse === 'M.Tech') && (
+                        {/* Dynamic Branch Dropdown – only shown if selected course has branches */}
+                        {hasBranches && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Target Branch</label>
                                 <select
@@ -102,11 +124,9 @@ const CreateQuiz: React.FC = () => {
                                     required
                                 >
                                     <option value="">Select Branch</option>
-                                    <option value="CSE">CSE</option>
-                                    <option value="CSD">CSD</option>
-                                    <option value="AIML">AIML</option>
-                                    <option value="Mechanical">Mechanical</option>
-                                    <option value="Civil">Civil</option>
+                                    {selectedCourseData!.branches.map(b => (
+                                        <option key={b} value={b}>{b}</option>
+                                    ))}
                                 </select>
                             </div>
                         )}

@@ -13,18 +13,19 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Update Site Settings (Admin only - using auth middleware + role check)
-// Assuming auth middleware adds user to req.user
+// Update Site Settings (Admin only)
 router.put('/', auth, async (req, res) => {
     try {
-        // Simple admin check
         if (req.userRole !== 'admin') {
             return res.status(403).json({ message: 'Access denied. Admin only.' });
         }
 
-        const { githubLink, linkedinLink, copyrightText, brandName, logoUrl, backgroundUrl } = req.body;
+        const {
+            githubLink, linkedinLink, copyrightText, brandName, logoUrl, backgroundUrl,
+            heroHeadline, heroSubtext, ctaButtonText,
+            animationType, animationSpeed, primaryColor, particleCount, showFloatingCards
+        } = req.body;
 
-        // Find and update or create if not exists (though getSettings ensures existence)
         let settings = await SiteSettings.findOne();
         if (!settings) {
             settings = new SiteSettings();
@@ -36,6 +37,17 @@ router.put('/', auth, async (req, res) => {
         if (brandName !== undefined) settings.brandName = brandName;
         if (logoUrl !== undefined) settings.logoUrl = logoUrl;
         if (backgroundUrl !== undefined) settings.backgroundUrl = backgroundUrl;
+
+        // Animation + Hero fields
+        if (heroHeadline !== undefined) settings.heroHeadline = heroHeadline;
+        if (heroSubtext !== undefined) settings.heroSubtext = heroSubtext;
+        if (ctaButtonText !== undefined) settings.ctaButtonText = ctaButtonText;
+        if (animationType !== undefined) settings.animationType = animationType;
+        if (animationSpeed !== undefined) settings.animationSpeed = animationSpeed;
+        if (primaryColor !== undefined) settings.primaryColor = primaryColor;
+        if (particleCount !== undefined) settings.particleCount = Number(particleCount);
+        if (showFloatingCards !== undefined) settings.showFloatingCards = showFloatingCards;
+
         settings.lastUpdated = Date.now();
 
         await settings.save();

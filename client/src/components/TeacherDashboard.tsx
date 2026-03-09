@@ -1,499 +1,487 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BASE_URL } from '../api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-// Import API fetch if needed
+import API from '../api';
 
-const TeacherDashboard: React.FC = () => {
-    const { user } = useAuth();
-    // Mock for now removed
+interface AcademicCourse { name: string; branches: string[]; }
 
-    if (!user.isApproved) {
-        return (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                <div className="flex">
-                    <div className="ml-3">
-                        <p className="text-sm text-yellow-700">
-                            Your account is pending approval by the administrator. You cannot create courses yet.
-                        </p>
+// ── Stat Card ──────────────────────────────────────────────────────────────
+const StatCard: React.FC<{ icon: string; label: string; value: number; gradient: string }> = ({ icon, label, value, gradient }) => (
+    <div className={`relative overflow-hidden rounded-2xl p-5 text-white ${gradient} shadow-lg`}>
+        <div className="absolute -top-4 -right-4 text-6xl opacity-10 select-none">{icon}</div>
+        <div className="text-3xl font-extrabold">{value}</div>
+        <div className="text-sm mt-1 opacity-80 font-medium">{label}</div>
+    </div>
+);
+
+// ── Action Card ────────────────────────────────────────────────────────────
+const ActionCard: React.FC<{ icon: string; title: string; desc: string; onClick?: () => void; to?: string; color: string }> = ({ icon, title, desc, onClick, to, color }) => {
+    const cls = `group relative flex flex-col items-center justify-center text-center p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer h-44 overflow-hidden ${color}`;
+    const inner = (
+        <>
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/10" />
+            <span className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300 inline-block">{icon}</span>
+            <h3 className="font-bold text-lg">{title}</h3>
+            <p className="text-sm opacity-75 mt-1">{desc}</p>
+        </>
+    );
+    if (to) return <Link to={to} className={cls}>{inner}</Link>;
+    return <div className={cls} onClick={onClick}>{inner}</div>;
+};
+
+// ── Results Modal ──────────────────────────────────────────────────────────
+const ResultsModal: React.FC<{ results: any[]; onClose: () => void }> = ({ results, onClose }) => (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-5 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white">📊 Quiz Results</h3>
+                <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">×</button>
+            </div>
+            <div className="p-6">
+                {results.length === 0 ? (
+                    <div className="text-center py-10">
+                        <div className="text-4xl mb-3">🎯</div>
+                        <p className="text-gray-500">No students have attempted this quiz yet.</p>
                     </div>
+                ) : (
+                    <div className="overflow-x-auto rounded-xl border border-gray-100">
+                        <table className="min-w-full">
+                            <thead className="bg-gradient-to-r from-indigo-50 to-violet-50">
+                                <tr>
+                                    {['Name', "Father's Name", "Mother's Name", 'Email', 'Score'].map(h => (
+                                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {results.map((r, i) => (
+                                    <tr key={i} className="hover:bg-gray-50 transition">
+                                        <td className="px-4 py-3 font-medium text-gray-900">{r.name}</td>
+                                        <td className="px-4 py-3 text-gray-500">{r.fatherName || '—'}</td>
+                                        <td className="px-4 py-3 text-gray-500">{r.motherName || '—'}</td>
+                                        <td className="px-4 py-3 text-gray-500">{r.email}</td>
+                                        <td className="px-4 py-3 font-bold text-indigo-700">{r.score}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                <div className="mt-4 flex justify-end">
+                    <button onClick={onClose} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">Close</button>
                 </div>
             </div>
-        )
-    }
+        </div>
+    </div>
+);
 
-    const [materialData, setMaterialData] = React.useState({ title: '', description: '', course: 'B.Tech', branch: 'CSE', linkUrl: '' });
-    const [files, setFiles] = React.useState<FileList | null>(null);
-    const [uploadStatus, setUploadStatus] = React.useState('');
+// ── Upload / Link Form ─────────────────────────────────────────────────────
+const MaterialForm: React.FC<{
+    mode: 'upload' | 'link';
+    academicCourses: AcademicCourse[];
+    onClose: () => void;
+    onSuccess: () => void;
+}> = ({ mode, academicCourses, onClose, onSuccess }) => {
+    const [data, setData] = useState({ title: '', description: '', course: '', branch: '', linkUrl: '' });
+    const [files, setFiles] = useState<FileList | null>(null);
+    const [status, setStatus] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
+    const selectedCourse = academicCourses.find(c => c.name === data.course);
+    const hasBranches = selectedCourse && selectedCourse.branches.length > 0;
+
+    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.length) {
             setFiles(e.target.files);
-            // Auto-set title from first filename if title is empty
-            if (!materialData.title) {
-                const name = e.target.files[0].name.replace(/\.[^/.]+$/, "");
-                setMaterialData(prev => ({ ...prev, title: name }));
-            }
+            if (!data.title) setData(p => ({ ...p, title: e.target.files![0].name.replace(/\.[^/.]+$/, '') }));
         }
     };
 
-    // Old handleUpload removed, replaced by handleSubmit in the main render block logic
-
-
-    const [activeOption, setActiveOption] = React.useState<'none' | 'upload' | 'link'>('none');
-
-    // ... (keep handleFileChange)
-
-    // Unified submit handler or separate? Unified is fine.
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('Handle Submit Called');
-        console.log('Active Option:', activeOption);
-
+        setLoading(true);
         try {
             const profile = JSON.parse(localStorage.getItem('profile') || '{}');
             const token = profile.token;
+            if (!token) { setStatus('Authentication failed.'); setLoading(false); return; }
 
-            if (!token) {
-                setUploadStatus('Authentication failed. Please login again.');
-                return;
-            }
-
-            let response;
-
-            if (activeOption === 'link') {
-                if (!materialData.linkUrl) {
-                    setUploadStatus('Please provide a link URL');
-                    return;
-                }
-
-                // Send JSON for link
-                response = await fetch(`${BASE_URL}/api/materials/link`, {
+            let res;
+            if (mode === 'link') {
+                if (!data.linkUrl) { setStatus('Please provide a URL.'); setLoading(false); return; }
+                res = await fetch(`${BASE_URL}/api/materials/link`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        title: materialData.title,
-                        description: materialData.description,
-                        course: materialData.course,
-                        branch: materialData.branch,
-                        linkUrl: materialData.linkUrl
-                    })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(data)
                 });
-
             } else {
-                // Upload File
-                if (!files || files.length === 0) {
-                    setUploadStatus('Please select at least one file');
-                    return;
-                }
-
-                if (files.length > 10) {
-                    setUploadStatus('You can upload a maximum of 10 files at once.');
-                    return;
-                }
-
-                const formData = new FormData();
-                formData.append('title', materialData.title);
-                formData.append('description', materialData.description);
-                formData.append('course', materialData.course);
-                formData.append('branch', materialData.branch);
-                formData.append('type', 'file');
-
-                // Append all files
-                for (let i = 0; i < files.length; i++) {
-                    formData.append('files', files[i]);
-                }
-
-                setUploadStatus('Uploading...');
-
-                response = await fetch(`${BASE_URL}/api/materials/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: formData
-                });
+                if (!files?.length) { setStatus('Please select a file.'); setLoading(false); return; }
+                const fd = new FormData();
+                fd.append('title', data.title); fd.append('description', data.description);
+                fd.append('course', data.course); fd.append('branch', data.branch); fd.append('type', 'file');
+                for (let i = 0; i < files.length; i++) fd.append('files', files[i]);
+                setStatus('Uploading...');
+                res = await fetch(`${BASE_URL}/api/materials/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
             }
 
-            if (response.ok) {
-                setUploadStatus('Materials uploaded/linked successfully!');
-                setMaterialData({ title: '', description: '', course: 'B.Tech', branch: 'CSE', linkUrl: '' });
-                setFiles(null);
-
-                // Reset file input value
-                const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-                if (fileInput) fileInput.value = '';
-
-                fetchResources();
-                setTimeout(() => { setActiveOption('none'); setUploadStatus(''); }, 2000);
+            if (res.ok) {
+                setStatus('✅ Success!');
+                setTimeout(() => { onSuccess(); onClose(); }, 1200);
             } else {
-                const errorData = await response.json();
-                setUploadStatus(errorData.message || 'Failed to upload material');
+                const err = await res.json();
+                setStatus(err.message || 'Failed.');
             }
-        } catch (error) {
-            console.error('Error uploading material:', error);
-            setUploadStatus('Error uploading material');
-        }
-    };
-
-    const [materials, setMaterials] = React.useState<any[]>([]);
-    const [quizzes, setQuizzes] = React.useState<any[]>([]);
-
-    React.useEffect(() => {
-        fetchResources();
-    }, []);
-
-    const fetchResources = async () => {
-        try {
-            const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            const token = profile.token;
-            if (!token) return;
-
-            const headers = { 'Authorization': `Bearer ${token}` };
-
-            // Fetch Materials
-            const matRes = await fetch(`${BASE_URL}/api/materials`, { headers });
-            if (matRes.ok) setMaterials(await matRes.json());
-
-            // Fetch Quizzes (Teacher sees all or we need a specific teacher route? 
-            // Current getQuizzes filters by student completion OR returns all. 
-            // Let's check getQuizzes logic: IF userRole is student checking completion. 
-            // IF teacher, it returns all (filtered by nothing if no queries).
-            // We might want to filter by "my uploaded ones" ideally, but for now getting all is fine per current backend logic.
-            const quizRes = await fetch(`${BASE_URL}/api/quizzes`, { headers });
-            if (quizRes.ok) setQuizzes(await quizRes.json());
-
-        } catch (error) {
-            console.error('Error fetching resources:', error);
-        }
-    };
-
-    const handleDeleteMaterial = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this material?')) return;
-        try {
-            const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            await fetch(`${BASE_URL}/api/materials/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${profile.token}` }
-            });
-            fetchResources(); // Refresh list
-        } catch (error) {
-            console.error('Delete error:', error);
-        }
-    };
-
-    const handleDeleteQuiz = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this quiz?')) return;
-        try {
-            const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            await fetch(`${BASE_URL}/api/quizzes/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${profile.token}` }
-            });
-            fetchResources(); // Refresh list
-        } catch (error) {
-            console.error('Delete error:', error);
-        }
-    };
-
-
-
-    const [isResultsModalOpen, setIsResultsModalOpen] = React.useState(false);
-    const [selectedQuizResults, setSelectedQuizResults] = React.useState<any[]>([]);
-
-    const handleViewResults = async (quizId: string) => {
-        try {
-            const profile = JSON.parse(localStorage.getItem('profile') || '{}');
-            const response = await fetch(`${BASE_URL}/api/quizzes/${quizId}/results`, {
-                headers: { 'Authorization': `Bearer ${profile.token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setSelectedQuizResults(data);
-                setIsResultsModalOpen(true);
-            } else {
-                alert('Failed to fetch results');
-            }
-        } catch (error) {
-            console.error('Error fetching results:', error);
-            alert('Error fetching results');
-        }
+        } catch (err) { setStatus('Error occurred.'); }
+        setLoading(false);
     };
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800">Teacher Dashboard</h2>
-                {/* <Link to="/create-course" ... > removed create course button if not needed, or keep it. User focused on materials/quiz. */}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+                <div className={`px-6 py-5 flex justify-between items-center ${mode === 'upload' ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gradient-to-r from-violet-600 to-purple-600'}`}>
+                    <h3 className="text-xl font-bold text-white">
+                        {mode === 'upload' ? '📄 Upload Study Material' : '🔗 Share External Link'}
+                    </h3>
+                    <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">×</button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {status && (
+                        <div className={`text-sm px-3 py-2 rounded-lg font-medium ${status.includes('✅') ? 'bg-green-50 text-green-700' : status === 'Uploading...' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
+                            {status}
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Title *</label>
+                        <input type="text" required value={data.title} onChange={e => setData(p => ({ ...p, title: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    </div>
+
+                    {mode === 'link' && (
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Link URL *</label>
+                            <input type="url" required placeholder="https://..." value={data.linkUrl} onChange={e => setData(p => ({ ...p, linkUrl: e.target.value }))}
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                        <textarea value={data.description} onChange={e => setData(p => ({ ...p, description: e.target.value }))} rows={2}
+                            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Target Course *</label>
+                            <select required value={data.course} onChange={e => setData(p => ({ ...p, course: e.target.value, branch: '' }))}
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                                <option value="">{academicCourses.length === 0 ? 'Loading...' : 'Select Course'}</option>
+                                {academicCourses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                Target Branch {hasBranches ? '*' : '(optional)'}
+                            </label>
+                            <select value={data.branch} onChange={e => setData(p => ({ ...p, branch: e.target.value }))}
+                                required={hasBranches ?? false}
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                disabled={!data.course}>
+                                <option value="">{!data.course ? 'Select course first' : hasBranches ? 'Select Branch' : 'No branches'}</option>
+                                {hasBranches && selectedCourse!.branches.map(b => <option key={b} value={b}>{b}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {mode === 'upload' && (
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Files * (PDF, Word, PPT, Excel, Images — max 10 files, 50 MB each)</label>
+                            <input id="file-upload" type="file"
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip"
+                                multiple required onChange={handleFile}
+                                className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                            {files && files.length > 0 && (
+                                <ul className="mt-2 text-xs text-gray-500 list-disc pl-4 space-y-0.5">
+                                    {Array.from(files).map((f, i) => <li key={i}>{f.name}</li>)}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">Cancel</button>
+                        <button type="submit" disabled={loading}
+                            className={`flex-1 py-2.5 text-white font-bold rounded-xl transition ${mode === 'upload' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90' : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:opacity-90'} disabled:opacity-50`}>
+                            {loading ? 'Working...' : mode === 'upload' ? 'Upload' : 'Share Link'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// ── Main TeacherDashboard ──────────────────────────────────────────────────
+const TeacherDashboard: React.FC = () => {
+    const { user } = useAuth();
+    const [materials, setMaterials] = useState<any[]>([]);
+    const [quizzes, setQuizzes] = useState<any[]>([]);
+    const [academicCourses, setAcademicCourses] = useState<AcademicCourse[]>([]);
+    const [formMode, setFormMode] = useState<'none' | 'upload' | 'link'>('none');
+    const [modalResults, setModalResults] = useState<any[] | null>(null);
+    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes'>('materials');
+
+    useEffect(() => { fetchAll(); }, []);
+
+    const getToken = () => JSON.parse(localStorage.getItem('profile') || '{}').token;
+
+    const fetchAll = async () => {
+        const token = getToken();
+        if (!token) return;
+        const headers = { 'Authorization': `Bearer ${token}` };
+        try {
+            const [matRes, quizRes, settRes] = await Promise.all([
+                fetch(`${BASE_URL}/api/materials`, { headers }),
+                fetch(`${BASE_URL}/api/quizzes`, { headers }),
+                fetch(`${BASE_URL}/api/site-settings`)
+            ]);
+            if (matRes.ok) setMaterials(await matRes.json());
+            if (quizRes.ok) setQuizzes(await quizRes.json());
+            if (settRes.ok) {
+                const s = await settRes.json();
+                if (s.academicCourses?.length) setAcademicCourses(s.academicCourses);
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const handleDelete = async (type: 'materials' | 'quizzes', id: string) => {
+        if (!window.confirm('Are you sure?')) return;
+        await fetch(`${BASE_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
+        fetchAll();
+    };
+
+    const handleViewResults = async (quizId: string) => {
+        const res = await fetch(`${BASE_URL}/api/quizzes/${quizId}/results`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
+        if (res.ok) setModalResults(await res.json());
+        else alert('Failed to fetch results');
+    };
+
+    const initials = (user?.name || 'T').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+
+    // Pending approval
+    if (!user?.isApproved) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center text-3xl">⏳</div>
+                <h3 className="text-xl font-bold text-gray-800">Account Pending Approval</h3>
+                <p className="text-gray-500 max-w-sm">Your account is awaiting administrator approval. You'll be notified via email once approved.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-8">
+            {/* ── Profile Hero ── */}
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-8 text-white shadow-2xl">
+                <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/10 rounded-full" />
+                <div className="absolute -bottom-10 -left-8 w-36 h-36 bg-white/10 rounded-full" />
+
+                <div className="relative flex flex-col md:flex-row items-center md:items-start gap-6">
+                    <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl font-extrabold border-2 border-white/30 shadow-lg flex-shrink-0">
+                        {initials}
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                        <p className="text-white/70 text-sm font-medium mb-0.5">Teacher</p>
+                        <h2 className="text-3xl font-extrabold">{user?.name}</h2>
+                        <p className="text-white/70 mt-1 text-sm">{user?.email}</p>
+                        <span className="inline-block mt-3 bg-emerald-400/30 border border-emerald-200/30 text-white text-xs font-semibold px-3 py-1 rounded-full">✅ Approved</span>
+                    </div>
+                    <button onClick={fetchAll}
+                        className="shrink-0 bg-white/20 hover:bg-white/30 border border-white/30 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                {/* Stats */}
+                <div className="relative grid grid-cols-2 gap-4 mt-8">
+                    {[
+                        { icon: '📄', label: 'Materials Uploaded', value: materials.length },
+                        { icon: '✏️', label: 'Quizzes Created', value: quizzes.length },
+                    ].map(s => (
+                        <div key={s.label} className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/20">
+                            <div className="text-2xl">{s.icon}</div>
+                            <div className="text-2xl font-extrabold mt-1">{s.value}</div>
+                            <div className="text-xs text-white/70 mt-0.5">{s.label}</div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
-            {/* Selection Buttons */}
-            {activeOption === 'none' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <button
-                        onClick={() => setActiveOption('upload')}
-                        className="p-6 bg-blue-50 border border-blue-200 rounded-xl hover:shadow-lg transition flex flex-col items-center justify-center text-center h-48"
-                    >
-                        <span className="text-4xl mb-4">📄</span>
-                        <h3 className="text-xl font-bold text-blue-800">Upload PDF</h3>
-                        <p className="text-blue-600 mt-2">Upload study materials, notes, or assignments.</p>
-                    </button>
-
-                    <button
-                        onClick={() => setActiveOption('link')}
-                        className="p-6 bg-purple-50 border border-purple-200 rounded-xl hover:shadow-lg transition flex flex-col items-center justify-center text-center h-48"
-                    >
-                        <span className="text-4xl mb-4">🔗</span>
-                        <h3 className="text-xl font-bold text-purple-800">Share Link</h3>
-                        <p className="text-purple-600 mt-2">Share YouTube videos, drive links, or resources.</p>
-                    </button>
-
-                    <Link
+            {/* ── Quick Actions ── */}
+            <div>
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Quick Actions</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <ActionCard icon="📁" title="Upload Files" desc="PDF, Word, PPT, Excel, Images & more"
+                        onClick={() => setFormMode('upload')}
+                        color="bg-blue-600 text-white border-blue-700 hover:shadow-blue-200 hover:shadow-xl" />
+                    <ActionCard icon="🔗" title="Share Link" desc="YouTube, Google Drive, external resources"
+                        onClick={() => setFormMode('link')}
+                        color="bg-violet-600 text-white border-violet-700 hover:shadow-violet-200 hover:shadow-xl" />
+                    <ActionCard icon="✏️" title="Create Quiz" desc="Build assessments for your students"
                         to="/create-quiz/general"
-                        className="p-6 bg-green-50 border border-green-200 rounded-xl hover:shadow-lg transition flex flex-col items-center justify-center text-center h-48"
-                    >
-                        <span className="text-4xl mb-4">📝</span>
-                        <h3 className="text-xl font-bold text-green-800">Create Quiz</h3>
-                        <p className="text-green-600 mt-2">Create assessments for your students.</p>
-                    </Link>
+                        color="bg-emerald-600 text-white border-emerald-700 hover:shadow-emerald-200 hover:shadow-xl" />
                 </div>
-            )}
+            </div>
 
-            {/* Upload/Link Form */}
-            {activeOption !== 'none' && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-8 relative">
-                    <button
-                        onClick={() => setActiveOption('none')}
-                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                    >
-                        ✕ Close
-                    </button>
-                    <h3 className="text-xl font-bold mb-4">
-                        {activeOption === 'upload' ? 'Upload Study Material (PDF)' : 'Share External Link'}
-                    </h3>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        {uploadStatus && <div className={`text-sm ${uploadStatus.includes('success') ? 'text-green-600' : 'text-red-600'}`}>{uploadStatus}</div>}
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Title</label>
-                            <input
-                                type="text"
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                value={materialData.title}
-                                onChange={(e) => setMaterialData({ ...materialData, title: e.target.value })}
-                                required
-                            />
-                        </div>
-
-                        {activeOption === 'link' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Link URL (YouTube, Drive, etc.)</label>
-                                <input
-                                    type="url"
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    value={materialData.linkUrl || ''}
-                                    onChange={(e) => setMaterialData({ ...materialData, linkUrl: e.target.value })}
-                                    required
-                                    placeholder="https://..."
-                                />
-                            </div>
-                        )}
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Description</label>
-                            <textarea
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                value={materialData.description}
-                                onChange={(e) => setMaterialData({ ...materialData, description: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Target Course</label>
-                                <select
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    value={materialData.course}
-                                    onChange={(e) => setMaterialData({ ...materialData, course: e.target.value })}
-                                >
-                                    <option value="B.Tech">B.Tech</option>
-                                    <option value="M.Tech">M.Tech</option>
-                                    <option value="BCA">BCA</option>
-                                    <option value="MCA">MCA</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Target Branch</label>
-                                <select
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                                    value={materialData.branch}
-                                    onChange={(e) => setMaterialData({ ...materialData, branch: e.target.value })}
-                                >
-                                    <option value="CSE">CSE</option>
-                                    <option value="CSD">CSD</option>
-                                    <option value="AIML">AIML</option>
-                                    <option value="Mechanical">Mechanical</option>
-                                    <option value="Civil">Civil</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {activeOption === 'upload' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">PDF Files (Max 10)</label>
-                                <input
-                                    id="file-upload"
-                                    type="file"
-                                    accept="application/pdf"
-                                    multiple
-                                    className="mt-1 block w-full"
-                                    onChange={handleFileChange}
-                                    required={activeOption === 'upload'}
-                                />
-                                {files && files.length > 0 && (
-                                    <div className="mt-2 text-sm text-gray-600">
-                                        Selected {files.length} file(s):
-                                        <ul className="list-disc pl-5 mt-1">
-                                            {Array.from(files).map((f, i) => (
-                                                <li key={i}>{f.name}</li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="flex justify-end gap-3">
-                            <button type="button" onClick={() => setActiveOption('none')} className="px-4 py-2 text-gray-600 hover:text-gray-800">
-                                Cancel
-                            </button>
-                            <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                                {activeOption === 'upload' ? 'Upload Material' : 'Share Link'}
-                            </button>
-                        </div>
-                    </form>
+            {/* ── Tabs ── */}
+            <div>
+                <div className="flex gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit mb-6">
+                    {[
+                        { key: 'materials', label: '📄 Materials', count: materials.length },
+                        { key: 'quizzes', label: '✏️ Quizzes', count: quizzes.length },
+                    ].map(tab => (
+                        <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
+                            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab.key ? 'bg-white shadow text-emerald-700' : 'text-gray-500 hover:text-gray-700'}`}>
+                            {tab.label}
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab.key ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>
+                                {tab.count}
+                            </span>
+                        </button>
+                    ))}
                 </div>
-            )}
 
-            {/* Manage Materials Section */}
-            <h3 className="text-xl font-bold mb-4 mt-8">Manage Materials</h3>
-            {materials.length === 0 ? (
-                <p className="text-gray-500 mb-6">No materials uploaded yet.</p>
-            ) : (
-                <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {materials.map(m => (
-                                <tr key={m._id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">{m.title}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{m.course} {m.branch}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">{m.type}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => handleDeleteMaterial(m._id)} className="text-red-600 hover:text-red-900">Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Manage Quizzes Section */}
-            <h3 className="text-xl font-bold mb-4 mt-8">Manage Quizzes</h3>
-            {quizzes.length === 0 ? (
-                <p className="text-gray-500 mb-6">No quizzes created yet.</p>
-            ) : (
-                <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Questions</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {quizzes.map(q => (
-                                <tr key={q._id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">{q.title}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{q.course} {q.branch}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{q.questions?.length || 0}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => handleViewResults(q._id)} className="text-indigo-600 hover:text-indigo-900 mr-4">View Results</button>
-                                        <button onClick={() => handleDeleteQuiz(q._id)} className="text-red-600 hover:text-red-900">Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Results Modal */}
-            {isResultsModalOpen && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-                    <div className="relative p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">Quiz Results</h3>
-                            <button onClick={() => setIsResultsModalOpen(false)} className="text-gray-500 hover:text-gray-700">✕</button>
-                        </div>
-
-                        {selectedQuizResults.length === 0 ? (
-                            <p className="text-gray-500">No students have taken this quiz yet.</p>
-                        ) : (
+                {/* Materials Table */}
+                {activeTab === 'materials' && (
+                    materials.length === 0 ? (
+                        <TeacherEmpty icon="📄" title="No Materials Uploaded" desc="Click 'Upload PDF' or 'Share Link' above to add your first material." />
+                    ) : (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
+                                <table className="min-w-full">
+                                    <thead className="bg-gradient-to-r from-blue-50 to-indigo-50">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Father's Name</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mother's Name</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                                            {['Title', 'Target', 'Type', 'Actions'].map((h, i) => (
+                                                <th key={h} className={`px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>
+                                            ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {selectedQuizResults.map((r: any, idx: number) => (
-                                            <tr key={idx}>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{r.name}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.fatherName || '-'}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.motherName || '-'}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{r.email}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{r.score}</td>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {materials.map(m => (
+                                            <tr key={m._id} className="hover:bg-gray-50 transition">
+                                                <td className="px-6 py-4 font-medium text-gray-900">{m.title}</td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    <span className="bg-indigo-50 text-indigo-700 text-xs font-medium px-2 py-0.5 rounded-full mr-1">{m.course}</span>
+                                                    {m.branch && <span className="bg-purple-50 text-purple-700 text-xs font-medium px-2 py-0.5 rounded-full">{m.branch}</span>}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full uppercase ${m.type === 'link' ? 'bg-violet-100 text-violet-700' :
+                                                            (() => {
+                                                                const e = (m.fileUrl || '').split('.').pop()?.toLowerCase();
+                                                                if (e === 'pdf') return 'bg-red-100 text-red-700';
+                                                                if (e === 'doc' || e === 'docx') return 'bg-blue-100 text-blue-700';
+                                                                if (e === 'ppt' || e === 'pptx') return 'bg-orange-100 text-orange-700';
+                                                                if (e === 'xls' || e === 'xlsx') return 'bg-green-100 text-green-700';
+                                                                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(e || '')) return 'bg-pink-100 text-pink-700';
+                                                                return 'bg-gray-100 text-gray-600';
+                                                            })()
+                                                        }`}>
+                                                        {m.type === 'link' ? '🔗 Link' : (() => {
+                                                            const e = (m.fileUrl || '').split('.').pop()?.toLowerCase();
+                                                            if (e === 'pdf') return '📄 PDF';
+                                                            if (e === 'doc') return '📝 DOC';
+                                                            if (e === 'docx') return '📝 DOCX';
+                                                            if (e === 'ppt') return '📊 PPT';
+                                                            if (e === 'pptx') return '📊 PPTX';
+                                                            if (e === 'xls') return '📈 XLS';
+                                                            if (e === 'xlsx') return '📈 XLSX';
+                                                            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(e || '')) return `🖼️ ${(e || '').toUpperCase()}`;
+                                                            if (e === 'txt') return '📃 TXT';
+                                                            if (e === 'zip') return '📦 ZIP';
+                                                            return '📁 File';
+                                                        })()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button onClick={() => handleDelete('materials', m._id)}
+                                                        className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-semibold transition">
+                                                        🗑 Delete
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                onClick={() => setIsResultsModalOpen(false)}
-                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                            >
-                                Close
-                            </button>
                         </div>
-                    </div>
-                </div>
-            )
-            }
+                    )
+                )}
 
-        </div >
+                {/* Quizzes Table */}
+                {activeTab === 'quizzes' && (
+                    quizzes.length === 0 ? (
+                        <TeacherEmpty icon="✏️" title="No Quizzes Created" desc="Click 'Create Quiz' above to build your first assessment." />
+                    ) : (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full">
+                                    <thead className="bg-gradient-to-r from-emerald-50 to-teal-50">
+                                        <tr>
+                                            {['Title', 'Target', 'Questions', 'Actions'].map((h, i) => (
+                                                <th key={h} className={`px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {quizzes.map(q => (
+                                            <tr key={q._id} className="hover:bg-gray-50 transition">
+                                                <td className="px-6 py-4 font-medium text-gray-900">{q.title}</td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    {q.course && <span className="bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-full mr-1">🎓 {q.course}</span>}
+                                                    {q.branch && <span className="bg-cyan-50 text-cyan-700 text-xs font-medium px-2 py-0.5 rounded-full">🌿 {q.branch}</span>}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                                                        {q.questions?.length || 0} Qs
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                                    <button onClick={() => handleViewResults(q._id)}
+                                                        className="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-semibold transition">
+                                                        📊 Results
+                                                    </button>
+                                                    <button onClick={() => handleDelete('quizzes', q._id)}
+                                                        className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-semibold transition">
+                                                        🗑 Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )
+                )}
+            </div>
+
+            {/* Modals */}
+            {formMode !== 'none' && (
+                <MaterialForm mode={formMode} academicCourses={academicCourses} onClose={() => setFormMode('none')} onSuccess={fetchAll} />
+            )}
+            {modalResults !== null && (
+                <ResultsModal results={modalResults} onClose={() => setModalResults(null)} />
+            )}
+        </div>
     );
 };
+
+const TeacherEmpty: React.FC<{ icon: string; title: string; desc: string }> = ({ icon, title, desc }) => (
+    <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="text-5xl mb-3">{icon}</div>
+        <h3 className="text-base font-bold text-gray-700 mb-1">{title}</h3>
+        <p className="text-sm text-gray-400 max-w-xs">{desc}</p>
+    </div>
+);
 
 export default TeacherDashboard;

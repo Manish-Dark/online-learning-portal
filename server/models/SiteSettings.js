@@ -25,6 +25,59 @@ const siteSettingsSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    // Hero Content
+    heroHeadline: {
+        type: String,
+        default: 'Master New Skills with'
+    },
+    heroSubtext: {
+        type: String,
+        default: 'The ultimate platform for students and teachers. Learn at your own pace, track your progress, and achieve your goals.'
+    },
+    ctaButtonText: {
+        type: String,
+        default: 'Get Started Free'
+    },
+    // Animation Settings
+    animationType: {
+        type: String,
+        enum: ['particles', 'waves', 'geometric', 'gradient'],
+        default: 'particles'
+    },
+    animationSpeed: {
+        type: String,
+        enum: ['slow', 'medium', 'fast'],
+        default: 'medium'
+    },
+    primaryColor: {
+        type: String,
+        default: '#4F46E5'
+    },
+    particleCount: {
+        type: Number,
+        default: 60,
+        min: 10,
+        max: 150
+    },
+    showFloatingCards: {
+        type: Boolean,
+        default: true
+    },
+    // Academic Courses & Branches
+    academicCourses: {
+        type: [
+            {
+                name: { type: String, required: true },
+                branches: { type: [String], default: [] }
+            }
+        ],
+        default: [
+            { name: 'B.Tech', branches: ['CSE', 'CSD', 'AIML', 'Mechanical', 'Civil'] },
+            { name: 'M.Tech', branches: ['CSE', 'CSD', 'AIML', 'Mechanical', 'Civil'] },
+            { name: 'BCA', branches: [] },
+            { name: 'MCA', branches: [] }
+        ]
+    },
     lastUpdated: {
         type: Date,
         default: Date.now

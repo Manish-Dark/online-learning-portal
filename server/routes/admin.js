@@ -128,6 +128,91 @@ router.delete('/logo', auth, adminCheck, async (req, res) => {
     }
 });
 
+// ── Academic Courses & Branches Management ──
+
+// GET all academic courses (also available via /site-settings, but handy here)
+router.get('/academic-courses', auth, adminCheck, async (req, res) => {
+    try {
+        const settings = await SiteSettings.getSettings();
+        res.json(settings.academicCourses || []);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch courses' });
+    }
+});
+
+// POST – add a new academic course
+router.post('/academic-courses', auth, adminCheck, async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || !name.trim()) return res.status(400).json({ message: 'Course name is required' });
+        const settings = await SiteSettings.getSettings();
+        const exists = settings.academicCourses.some(c => c.name.toLowerCase() === name.trim().toLowerCase());
+        if (exists) return res.status(400).json({ message: 'Course already exists' });
+        settings.academicCourses.push({ name: name.trim(), branches: [] });
+        await settings.save();
+        res.json({ message: 'Course added', academicCourses: settings.academicCourses });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to add course' });
+    }
+});
+
+// DELETE – remove an academic course by name
+router.delete('/academic-courses/:courseName', auth, adminCheck, async (req, res) => {
+    try {
+        const settings = await SiteSettings.getSettings();
+        const original = settings.academicCourses.length;
+        settings.academicCourses = settings.academicCourses.filter(
+            c => c.name.toLowerCase() !== req.params.courseName.toLowerCase()
+        );
+        if (settings.academicCourses.length === original) return res.status(404).json({ message: 'Course not found' });
+        await settings.save();
+        res.json({ message: 'Course deleted', academicCourses: settings.academicCourses });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to delete course' });
+    }
+});
+
+// POST – add a branch to a course
+router.post('/academic-courses/:courseName/branches', auth, adminCheck, async (req, res) => {
+    try {
+        const { branch } = req.body;
+        if (!branch || !branch.trim()) return res.status(400).json({ message: 'Branch name is required' });
+        const settings = await SiteSettings.getSettings();
+        const course = settings.academicCourses.find(
+            c => c.name.toLowerCase() === req.params.courseName.toLowerCase()
+        );
+        if (!course) return res.status(404).json({ message: 'Course not found' });
+        if (course.branches.map(b => b.toLowerCase()).includes(branch.trim().toLowerCase())) {
+            return res.status(400).json({ message: 'Branch already exists' });
+        }
+        course.branches.push(branch.trim());
+        await settings.save();
+        res.json({ message: 'Branch added', academicCourses: settings.academicCourses });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to add branch' });
+    }
+});
+
+// DELETE – remove a branch from a course
+router.delete('/academic-courses/:courseName/branches/:branchName', auth, adminCheck, async (req, res) => {
+    try {
+        const settings = await SiteSettings.getSettings();
+        const course = settings.academicCourses.find(
+            c => c.name.toLowerCase() === req.params.courseName.toLowerCase()
+        );
+        if (!course) return res.status(404).json({ message: 'Course not found' });
+        const before = course.branches.length;
+        course.branches = course.branches.filter(
+            b => b.toLowerCase() !== req.params.branchName.toLowerCase()
+        );
+        if (course.branches.length === before) return res.status(404).json({ message: 'Branch not found' });
+        await settings.save();
+        res.json({ message: 'Branch deleted', academicCourses: settings.academicCourses });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to delete branch' });
+    }
+});
+
 router.get('/stats', auth, adminCheck, getStats);
 
 // Teachers
