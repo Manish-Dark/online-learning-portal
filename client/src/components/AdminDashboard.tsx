@@ -20,6 +20,10 @@ const AdminDashboard: React.FC = () => {
         githubLink: '',
         linkedinLink: '',
         copyrightText: '',
+        // Auth Pages
+        authPageTitle: 'LEARNHUB',
+        authPageWelcomeText: 'Begin your journey with us.',
+        authPageDescription: 'Create an account to unlock exclusive courses, track your progress, and connect with expert educators globally.',
         // Animation & Hero
         heroHeadline: '',
         heroSubtext: '',
@@ -567,6 +571,50 @@ const AdminDashboard: React.FC = () => {
                                 onChange={(e) => setSiteSettings({ ...siteSettings, copyrightText: e.target.value })}
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                                 placeholder="2026 Your Name"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition"
+                        >
+                            Save Settings
+                        </button>
+                    </form>
+                </div>
+
+                {/* ── AUTHENTICATION PAGES CONTENT ── */}
+                <div className="border-t pt-6 mt-6">
+                    <h4 className="text-md font-semibold mb-4 text-gray-800">Authentication Pages Content</h4>
+                    <p className="text-sm text-gray-500 mb-4">Customize the text displayed on the left side of the Login and Registration pages.</p>
+                    <form onSubmit={handleUpdateSettings} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Platform Name / Title</label>
+                            <input
+                                type="text"
+                                value={siteSettings.authPageTitle || ''}
+                                onChange={(e) => setSiteSettings({ ...siteSettings, authPageTitle: e.target.value })}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                placeholder="LEARNHUB"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Welcome Text</label>
+                            <input
+                                type="text"
+                                value={siteSettings.authPageWelcomeText || ''}
+                                onChange={(e) => setSiteSettings({ ...siteSettings, authPageWelcomeText: e.target.value })}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                placeholder="Begin your journey with us."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Description Text</label>
+                            <textarea
+                                value={siteSettings.authPageDescription || ''}
+                                onChange={(e) => setSiteSettings({ ...siteSettings, authPageDescription: e.target.value })}
+                                rows={2}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                                placeholder="Create an account to unlock exclusive courses..."
                             />
                         </div>
                         <button

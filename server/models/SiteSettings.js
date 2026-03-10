@@ -25,6 +25,19 @@ const siteSettingsSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    // Authentication Pages Content
+    authPageTitle: {
+        type: String,
+        default: 'LEARNHUB'
+    },
+    authPageWelcomeText: {
+        type: String,
+        default: 'Begin your journey with us.'
+    },
+    authPageDescription: {
+        type: String,
+        default: 'Create an account to unlock exclusive courses, track your progress, and connect with expert educators globally.'
+    },
     // Hero Content
     heroHeadline: {
         type: String,

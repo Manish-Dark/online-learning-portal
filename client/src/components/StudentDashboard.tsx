@@ -185,7 +185,20 @@ const FilePreviewModal: React.FC<{ material: any; onClose: () => void }> = ({ ma
                 )}
 
                 {/* PDF */}
-                {blobUrl && isPdf && <iframe src={blobUrl} className="w-full h-full border-0 rounded-xl" title={material.title} />}
+                {blobUrl && isPdf && (
+                    <object data={blobUrl} type="application/pdf" className="w-full h-full border-0 rounded-xl bg-white">
+                        <div className="flex flex-col items-center justify-center p-8 text-center h-full max-w-sm mx-auto">
+                            <div className="text-5xl mb-4">📄</div>
+                            <h4 className="text-lg font-bold text-white mb-2">PDF Viewer Not Supported</h4>
+                            <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.6)' }}>Your browser does not support inline PDFs. Don't worry, you can still download the file to view it.</p>
+                            <a href={`${BASE_URL}/api/materials/download/${material._id}`}
+                                className="text-white font-semibold px-6 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-lg"
+                                style={{ background: '#4f46e5' }}>
+                                ⬇ Download PDF
+                            </a>
+                        </div>
+                    </object>
+                )}
 
                 {/* Image */}
                 {blobUrl && isImage && <img src={blobUrl} alt={material.title} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />}

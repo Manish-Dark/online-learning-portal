@@ -22,6 +22,7 @@ router.put('/', auth, async (req, res) => {
 
         const {
             githubLink, linkedinLink, copyrightText, brandName, logoUrl, backgroundUrl,
+            authPageTitle, authPageWelcomeText, authPageDescription,
             heroHeadline, heroSubtext, ctaButtonText,
             animationType, animationSpeed, primaryColor, particleCount, showFloatingCards
         } = req.body;
@@ -37,6 +38,11 @@ router.put('/', auth, async (req, res) => {
         if (brandName !== undefined) settings.brandName = brandName;
         if (logoUrl !== undefined) settings.logoUrl = logoUrl;
         if (backgroundUrl !== undefined) settings.backgroundUrl = backgroundUrl;
+
+        // Auth Pages Content
+        if (authPageTitle !== undefined) settings.authPageTitle = authPageTitle;
+        if (authPageWelcomeText !== undefined) settings.authPageWelcomeText = authPageWelcomeText;
+        if (authPageDescription !== undefined) settings.authPageDescription = authPageDescription;
 
         // Animation + Hero fields
         if (heroHeadline !== undefined) settings.heroHeadline = heroHeadline;
