@@ -152,4 +152,119 @@ const getQuizResults = async (req, res) => {
     }
 };
 
-module.exports = { createQuiz, getQuizzes, getQuiz, submitQuiz, deleteQuiz, getQuizResults };
+const parseQuizPDF = async (req, res) => {
+    try {
+        console.log('--- PDF Parse Request Received ---');
+        if (!req.file) {
+            console.log('No file in request');
+            return res.status(400).json({ message: 'No PDF file uploaded' });
+        }
+        console.log('File received:', req.file.originalname, 'Size:', req.file.size);
+
+        const pdfLib = require('pdf-parse');
+        const PDFParse = pdfLib.PDFParse || pdfLib.default || pdfLib;
+        
+        const parser = new PDFParse({ data: req.file.buffer });
+        const result = await parser.getText();
+        const text = result.text;
+        await parser.destroy();
+
+        console.log('PDF text extracted, length:', text.length);
+
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l !== '');
+        let title = '';
+        const questions = [];
+        let currentQuestion = null;
+
+        lines.forEach(line => {
+             // Title detection
+            if (line.toLowerCase().startsWith('title:') || (title === '' && !line.match(/^Q?\d+[:.)]/i) && questions.length === 0)) {
+                if (line.toLowerCase().startsWith('title:')) {
+                    title = line.split(':')[1].trim();
+                } else if (title === '') {
+                    title = line;
+                } else {
+                    title += ' ' + line;
+                }
+            } 
+            // Question detection: 1. or Q1. or 1)
+            else if (line.match(/^Q?\d+[:.)]/i)) {
+                if (currentQuestion) questions.push(currentQuestion);
+                currentQuestion = {
+                    questionText: line.replace(/^Q?\d+[:.)]/i, '').trim(),
+                    options: [],
+                    correctAnswer: '',
+                    lastOptionLetter: ''
+                };
+            } 
+            // Option detection: A) or (A) or A.
+            else if (line.match(/^([A-D])[:.)]/i)) {
+                const match = line.match(/^([A-D])[:.)]/i);
+                const letter = match[1].toUpperCase();
+                const optionText = line.replace(/^([A-D])[:.)]/i, '').trim();
+                if (currentQuestion) {
+                    currentQuestion.options.push(optionText);
+                    currentQuestion.lastOptionLetter = letter;
+                }
+            }
+            // Multiple options on one line: (A) X (B) Y
+            else if (line.match(/\([A-D]\)/i)) {
+                 const parts = line.split(/\([A-D]\)/i).filter(p => p.trim() !== '');
+                 const optionLetters = line.match(/\([A-D]\)/gi);
+                 if (currentQuestion && optionLetters) {
+                     optionLetters.forEach((letter, idx) => {
+                         if (parts[idx]) {
+                             currentQuestion.options.push(parts[idx].trim());
+                             currentQuestion.lastOptionLetter = letter.replace(/[()]/g, '').toUpperCase();
+                         }
+                     });
+                 }
+            }
+            // Answer detection: Answer: Option B or Answer: B
+            else if (line.toLowerCase().includes('answer:')) {
+                if (currentQuestion) {
+                    const ansPart = line.split(/answer:/i)[1].trim();
+                    const letterMatch = ansPart.match(/([A-D])/i);
+                    if (letterMatch) {
+                        const letter = letterMatch[1].toUpperCase();
+                        const letterIndex = letter.charCodeAt(0) - 65; // A=0, B=1, ...
+                        if (currentQuestion.options[letterIndex]) {
+                            currentQuestion.correctAnswer = currentQuestion.options[letterIndex];
+                        } else {
+                            currentQuestion.correctAnswer = ansPart; // Fallback
+                        }
+                    } else {
+                        currentQuestion.correctAnswer = ansPart;
+                    }
+                }
+            }
+            // Continuation of question or options
+            else if (currentQuestion) {
+                if (currentQuestion.options.length === 0) {
+                    currentQuestion.questionText += ' ' + line;
+                } else {
+                    // Continuation of last option
+                    currentQuestion.options[currentQuestion.options.length - 1] += ' ' + line;
+                }
+            }
+        });
+
+        if (currentQuestion) questions.push(currentQuestion);
+
+        // Sanitize Title
+        const sanitizedTitle = title.replace(/Multiple Choice Questions.*/i, '').replace(/Practice Set.*/i, '').replace(/Questions \|.*/i, '').trim();
+
+        // Ensure every question has 4 options
+        questions.forEach(q => {
+            delete q.lastOptionLetter;
+            while (q.options.length < 4) q.options.push('');
+        });
+
+        res.status(200).json({ title: sanitizedTitle || 'Parsed Quiz', questions });
+    } catch (error) {
+        console.error('PDF Parse Error:', error);
+        res.status(500).json({ message: 'Failed to parse PDF', error: error.message });
+    }
+};
+
+module.exports = { createQuiz, getQuizzes, getQuiz, submitQuiz, deleteQuiz, getQuizResults, parseQuizPDF };

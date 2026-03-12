@@ -35,6 +35,14 @@ const FilePreviewModal: React.FC<{ material: any; onClose: () => void }> = ({ ma
     const [pptSlides, setPptSlides] = useState<string[] | null>(null);
     // For Excel → HTML table string
     const [excelHtml, setExcelHtml] = useState<string | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        };
+        checkMobile();
+    }, []);
 
     const ext = getFileExt(material.fileUrl || '');
     const isImage = IMAGE_EXTS.has(ext);
@@ -186,18 +194,52 @@ const FilePreviewModal: React.FC<{ material: any; onClose: () => void }> = ({ ma
 
                 {/* PDF */}
                 {blobUrl && isPdf && (
-                    <object data={blobUrl} type="application/pdf" className="w-full h-full border-0 rounded-xl bg-white">
-                        <div className="flex flex-col items-center justify-center p-8 text-center h-full max-w-sm mx-auto">
-                            <div className="text-5xl mb-4">📄</div>
-                            <h4 className="text-lg font-bold text-white mb-2">PDF Viewer Not Supported</h4>
-                            <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.6)' }}>Your browser does not support inline PDFs. Don't worry, you can still download the file to view it.</p>
-                            <a href={`${BASE_URL}/api/materials/download/${material._id}`}
-                                className="text-white font-semibold px-6 py-2.5 rounded-xl inline-flex items-center gap-2 shadow-lg"
-                                style={{ background: '#4f46e5' }}>
-                                ⬇ Download PDF
-                            </a>
-                        </div>
-                    </object>
+                    <div className="w-full h-full flex items-center justify-center">
+                        {isMobile ? (
+                            <div className="flex flex-col items-center justify-center p-8 text-center bg-gray-800/50 backdrop-blur-md rounded-3xl border border-white/10 max-w-sm mx-auto shadow-2xl">
+                                <div className="w-20 h-20 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-inner">📄</div>
+                                <h4 className="text-xl font-bold text-white mb-3">Mobile PDF Viewer</h4>
+                                <p className="text-sm mb-8 leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                                    Mobile browsers work best when opening PDFs in their native viewer.
+                                </p>
+                                <div className="space-y-3 w-full">
+                                    <button 
+                                        onClick={() => window.open(blobUrl, '_blank')}
+                                        className="w-full text-white font-bold px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95"
+                                        style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
+                                        👁 Open in Browser
+                                    </button>
+                                    <a href={`${BASE_URL}/api/materials/download/${material._id}`}
+                                        className="w-full text-white/80 font-semibold px-6 py-3 rounded-2xl flex items-center justify-center gap-2 border border-white/10 hover:bg-white/5 transition">
+                                        ⬇ Download PDF
+                                    </a>
+                                </div>
+                            </div>
+                        ) : (
+                            <object data={blobUrl} type="application/pdf" className="w-full h-full border-0 rounded-xl bg-white">
+                                <div className="flex flex-col items-center justify-center p-8 text-center h-full max-w-sm mx-auto bg-gray-900/50 rounded-3xl">
+                                    <div className="text-5xl mb-6">📄</div>
+                                    <h4 className="text-xl font-bold text-white mb-3">Viewer Not Supported</h4>
+                                    <p className="text-sm mb-8" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                                        Your browser doesn't support inline PDFs. Tap below to view or download.
+                                    </p>
+                                    <div className="space-y-3 w-full">
+                                        <button 
+                                            onClick={() => window.open(blobUrl, '_blank')}
+                                            className="w-full text-white font-bold px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg"
+                                            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
+                                            👁 View in New Tab
+                                        </button>
+                                        <a href={`${BASE_URL}/api/materials/download/${material._id}`}
+                                            className="w-full text-white/80 font-semibold px-6 py-3 rounded-2xl flex items-center justify-center gap-2 border border-white/10"
+                                            style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                            ⬇ Download PDF
+                                        </a>
+                                    </div>
+                                </div>
+                            </object>
+                        )}
+                    </div>
                 )}
 
                 {/* Image */}

@@ -17,6 +17,27 @@ const CreateQuiz: React.FC = () => {
     // Dynamic selection states
     const [selectedCourse, setSelectedCourse] = useState('');
     const [selectedBranch, setSelectedBranch] = useState('');
+    const [uploading, setUploading] = useState(false);
+
+    const handleParsePDF = async (file: File) => {
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('pdf', file);
+
+        try {
+            const { data } = await API.post('/quizzes/parse-pdf', formData);
+            if (data.title) setTitle(data.title);
+            if (data.questions && data.questions.length > 0) {
+                setQuestions(data.questions);
+            }
+            alert('PDF parsed successfully! Please check the questions below.');
+        } catch (error: any) {
+            console.error(error);
+            alert(error.response?.data?.message || 'Failed to parse PDF');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     useEffect(() => {
         API.get('/site-settings')
@@ -135,13 +156,31 @@ const CreateQuiz: React.FC = () => {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Quiz Title</label>
-                    <input
-                        type="text"
-                        required
-                        className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                    />
+                    <div className="mt-1 flex gap-2">
+                        <input
+                            type="text"
+                            required
+                            className="block w-full border border-gray-300 rounded-md p-2"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                        />
+                        <label className={`cursor-pointer ${uploading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-4 py-2 rounded-md font-medium whitespace-nowrap`}>
+                            {uploading ? 'Parsing...' : 'Upload PDF'}
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                className="hidden"
+                                disabled={uploading}
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleParsePDF(file);
+                                }}
+                            />
+                        </label>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 italic">
+                        Tip: Upload a PDF with questions like "Q1. Text... (A) Opt1 (B) Opt2..." to auto-fill.
+                    </p>
                 </div>
 
                 {questions.map((q, qIndex) => (
