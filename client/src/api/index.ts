@@ -11,6 +11,17 @@ API.interceptors.request.use((req) => {
     return req;
 });
 
+API.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+            localStorage.clear();
+            window.location.href = '/login?expired=true';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const signIn = (formData: any) => API.post('/auth/login', formData);
 export const signUp = (formData: any) => API.post('/auth/register', formData);
 export const fetchCourses = () => API.get('/courses');

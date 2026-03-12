@@ -40,7 +40,7 @@ const register = async (req, res) => {
             });
         }
 
-        const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.status(201).json({ result: user, token });
     } catch (error) {
@@ -79,7 +79,7 @@ const login = async (req, res) => {
             return res.status(403).json({ message: 'Account not approved yet. Please wait for admin approval.' });
         }
 
-        const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user._id, role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.status(200).json({ result: user, token });
     } catch (error) {

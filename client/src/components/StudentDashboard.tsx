@@ -63,6 +63,11 @@ const FilePreviewModal: React.FC<{ material: any; onClose: () => void }> = ({ ma
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
                 const res = await fetch(`${BASE_URL}/api/materials/download/${material._id}?inline=true`, { headers });
+                if (res.status === 401) {
+                    localStorage.clear();
+                    window.location.href = '/login?expired=true';
+                    return;
+                }
                 if (!res.ok) throw new Error('Failed to fetch file');
                 const arrayBuffer = await res.arrayBuffer();
 
@@ -442,6 +447,12 @@ const StudentDashboard: React.FC = () => {
                 fetch(`${BASE_URL}/api/quizzes`, { headers }),
                 fetch(`${BASE_URL}/api/auth/me`, { headers }),
             ]);
+            if (matRes.status === 401 || quizRes.status === 401 || profRes.status === 401) {
+                // Simplest way in this structure is to clear localStorage and redirect
+                localStorage.clear();
+                window.location.href = '/login?expired=true';
+                return;
+            }
             if (matRes.ok) setMaterials(await matRes.json());
             if (quizRes.ok) setQuizzes(await quizRes.json());
             if (profRes.ok) setUser(await profRes.json());

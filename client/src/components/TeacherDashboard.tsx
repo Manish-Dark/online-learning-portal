@@ -2,18 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { BASE_URL } from '../api';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import API from '../api';
+
 
 interface AcademicCourse { name: string; branches: string[]; }
 
 // ── Stat Card ──────────────────────────────────────────────────────────────
-const StatCard: React.FC<{ icon: string; label: string; value: number; gradient: string }> = ({ icon, label, value, gradient }) => (
-    <div className={`relative overflow-hidden rounded-2xl p-5 text-white ${gradient} shadow-lg`}>
-        <div className="absolute -top-4 -right-4 text-6xl opacity-10 select-none">{icon}</div>
-        <div className="text-3xl font-extrabold">{value}</div>
-        <div className="text-sm mt-1 opacity-80 font-medium">{label}</div>
-    </div>
-);
+
 
 // ── Action Card ────────────────────────────────────────────────────────────
 const ActionCard: React.FC<{ icon: string; title: string; desc: string; onClick?: () => void; to?: string; color: string }> = ({ icon, title, desc, onClick, to, color }) => {
@@ -71,6 +65,42 @@ const ResultsModal: React.FC<{ results: any[]; onClose: () => void }> = ({ resul
                 <div className="mt-4 flex justify-end">
                     <button onClick={onClose} className="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">Close</button>
                 </div>
+            </div>
+        </div>
+    </div>
+);
+
+// ── Quiz Preview Modal ─────────────────────────────────────────────────────
+const QuizPreviewModal: React.FC<{ quiz: any; onClose: () => void }> = ({ quiz, onClose }) => (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 flex justify-between items-center shrink-0">
+                <div>
+                    <h3 className="text-xl font-bold text-white">{quiz.title}</h3>
+                    <p className="text-white/70 text-sm">{quiz.course} {quiz.branch ? `— ${quiz.branch}` : ''}</p>
+                </div>
+                <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">×</button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-6">
+                {quiz.questions.map((q: any, i: number) => (
+                    <div key={i} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                        <h4 className="font-bold text-gray-800 mb-4 flex gap-3">
+                            <span className="bg-emerald-100 text-emerald-700 w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0">{i + 1}</span>
+                            {q.questionText}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-9">
+                            {q.options.map((opt: string, oi: number) => (
+                                <div key={oi} className={`px-4 py-2.5 rounded-xl border text-sm ${opt === q.correctAnswer ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold' : 'bg-white border-gray-200 text-gray-600'}`}>
+                                    <span className="mr-2 opacity-50">{String.fromCharCode(65 + oi)})</span> {opt}
+                                    {opt === q.correctAnswer && <span className="ml-2 text-xs bg-emerald-100 px-1.5 py-0.5 rounded">Correct</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end shrink-0">
+                <button onClick={onClose} className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">Close Preview</button>
             </div>
         </div>
     </div>
@@ -230,6 +260,7 @@ const TeacherDashboard: React.FC = () => {
     const [academicCourses, setAcademicCourses] = useState<AcademicCourse[]>([]);
     const [formMode, setFormMode] = useState<'none' | 'upload' | 'link'>('none');
     const [modalResults, setModalResults] = useState<any[] | null>(null);
+    const [previewQuiz, setPreviewQuiz] = useState<any | null>(null);
     const [activeTab, setActiveTab] = useState<'materials' | 'quizzes'>('materials');
 
     useEffect(() => { fetchAll(); }, []);
@@ -246,6 +277,11 @@ const TeacherDashboard: React.FC = () => {
                 fetch(`${BASE_URL}/api/quizzes`, { headers }),
                 fetch(`${BASE_URL}/api/site-settings`)
             ]);
+            if (matRes.status === 401 || quizRes.status === 401) {
+                localStorage.clear();
+                window.location.href = '/login?expired=true';
+                return;
+            }
             if (matRes.ok) setMaterials(await matRes.json());
             if (quizRes.ok) setQuizzes(await quizRes.json());
             if (settRes.ok) {
@@ -265,6 +301,18 @@ const TeacherDashboard: React.FC = () => {
         const res = await fetch(`${BASE_URL}/api/quizzes/${quizId}/results`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
         if (res.ok) setModalResults(await res.json());
         else alert('Failed to fetch results');
+    };
+
+    const handleViewMaterial = (m: any) => {
+        if (m.type === 'link') {
+            window.open(m.linkUrl, '_blank');
+        } else {
+            window.open(`${BASE_URL}/api/materials/download/${m._id}?inline=true`, '_blank');
+        }
+    };
+
+    const handlePreviewQuiz = (quiz: any) => {
+        setPreviewQuiz(quiz);
     };
 
     const initials = (user?.name || 'T').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
@@ -402,7 +450,11 @@ const TeacherDashboard: React.FC = () => {
                                                         })()}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
+                                                 <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                                    <button onClick={() => handleViewMaterial(m)}
+                                                        className="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-semibold transition">
+                                                        👁️ View
+                                                    </button>
                                                     <button onClick={() => handleDelete('materials', m._id)}
                                                         className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-semibold transition">
                                                         🗑 Delete
@@ -446,6 +498,10 @@ const TeacherDashboard: React.FC = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                                    <button onClick={() => handlePreviewQuiz(q)}
+                                                        className="text-xs bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg font-semibold transition">
+                                                        👁️ Preview
+                                                    </button>
                                                     <button onClick={() => handleViewResults(q._id)}
                                                         className="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-semibold transition">
                                                         📊 Results
@@ -471,6 +527,9 @@ const TeacherDashboard: React.FC = () => {
             )}
             {modalResults !== null && (
                 <ResultsModal results={modalResults} onClose={() => setModalResults(null)} />
+            )}
+            {previewQuiz !== null && (
+                <QuizPreviewModal quiz={previewQuiz} onClose={() => setPreviewQuiz(null)} />
             )}
         </div>
     );

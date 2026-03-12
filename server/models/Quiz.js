@@ -10,6 +10,7 @@ const quizSchema = new mongoose.Schema({
         correctAnswer: { type: String, required: true } // Store the option text or index
     }],
     branch: { type: String }, // Optional, for specific branch targeting
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' },
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -2,12 +2,15 @@ const Quiz = require('../models/Quiz');
 const Student = require('../models/Student');
 
 const createQuiz = async (req, res) => {
-    const { title, courseId, questions, branch } = req.body;
+    const { title, courseId, course, questions, branch } = req.body;
+
     const newQuiz = new Quiz({
         title,
         courseId,
+        course,
         questions,
         branch,
+        createdBy: req.userId,
         createdAt: new Date().toISOString()
     });
     try {
@@ -36,6 +39,10 @@ const getQuizzes = async (req, res) => {
 
         if (course) query.course = course;
         if (branch) query.branch = branch;
+
+        if (userRole === 'teacher') {
+            query.createdBy = userId;
+        }
 
         let quizzes = await Quiz.find(query).sort({ createdAt: -1 });
 
@@ -161,9 +168,20 @@ const parseQuizPDF = async (req, res) => {
         }
         console.log('File received:', req.file.originalname, 'Size:', req.file.size);
 
-        const pdfParse = require('pdf-parse');
-        const result = await pdfParse(req.file.buffer);
+        // Polyfill DOMMatrix for Vercel/Serverless environments
+        if (typeof global.DOMMatrix === 'undefined') {
+            global.DOMMatrix = class DOMMatrix {
+                constructor() {
+                    this.a = 1; this.b = 0; this.c = 0; this.d = 1; this.e = 0; this.f = 0;
+                }
+            };
+        }
+
+        const { PDFParse } = require('pdf-parse');
+        const parser = new PDFParse({ data: req.file.buffer });
+        const result = await parser.getText();
         const text = result.text;
+        await parser.destroy();
 
         console.log('PDF text extracted, length:', text.length);
 
