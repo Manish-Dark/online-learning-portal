@@ -161,13 +161,9 @@ const parseQuizPDF = async (req, res) => {
         }
         console.log('File received:', req.file.originalname, 'Size:', req.file.size);
 
-        const pdfLib = require('pdf-parse');
-        const PDFParse = pdfLib.PDFParse || pdfLib.default || pdfLib;
-        
-        const parser = new PDFParse({ data: req.file.buffer });
-        const result = await parser.getText();
+        const pdfParse = require('pdf-parse');
+        const result = await pdfParse(req.file.buffer);
         const text = result.text;
-        await parser.destroy();
 
         console.log('PDF text extracted, length:', text.length);
 
