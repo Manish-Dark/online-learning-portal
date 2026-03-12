@@ -177,17 +177,9 @@ const parseQuizPDF = async (req, res) => {
             };
         }
 
-        const pdfParseModule = require('pdf-parse');
-        const PDFParse = pdfParseModule.PDFParse || (pdfParseModule.default && pdfParseModule.default.PDFParse) || pdfParseModule;
-        
-        if (typeof PDFParse !== 'function') {
-            throw new Error('PDFParse is not a constructor/function. Module structure: ' + Object.keys(pdfParseModule).join(', '));
-        }
-
-        const parser = new PDFParse({ data: req.file.buffer });
-        const result = await parser.getText();
-        const text = result.text;
-        await parser.destroy();
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(req.file.buffer);
+        const text = data.text;
 
         console.log('PDF text extracted, length:', text.length);
 
