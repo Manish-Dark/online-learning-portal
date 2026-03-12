@@ -177,7 +177,13 @@ const parseQuizPDF = async (req, res) => {
             };
         }
 
-        const { PDFParse } = require('pdf-parse');
+        const pdfParseModule = require('pdf-parse');
+        const PDFParse = pdfParseModule.PDFParse || (pdfParseModule.default && pdfParseModule.default.PDFParse) || pdfParseModule;
+        
+        if (typeof PDFParse !== 'function') {
+            throw new Error('PDFParse is not a constructor/function. Module structure: ' + Object.keys(pdfParseModule).join(', '));
+        }
+
         const parser = new PDFParse({ data: req.file.buffer });
         const result = await parser.getText();
         const text = result.text;
