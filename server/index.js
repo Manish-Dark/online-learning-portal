@@ -65,6 +65,7 @@ app.use('/api/quizzes', quizRoutes);
 
 const materialRoutes = require('./routes/material');
 const siteSettingsRoutes = require('./routes/siteSettings');
+const liveStreamRoutes = require('./routes/liveStream');
 
 // Direct download route to bypass potential router issues
 // (Merged to top of file)
@@ -73,6 +74,7 @@ const siteSettingsRoutes = require('./routes/siteSettings');
 
 app.use('/api/materials', materialRoutes);
 app.use('/api/site-settings', siteSettingsRoutes);
+app.use('/api/streams', liveStreamRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 

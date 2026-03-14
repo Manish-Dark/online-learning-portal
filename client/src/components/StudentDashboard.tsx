@@ -428,8 +428,9 @@ const StudentDashboard: React.FC = () => {
     const { user: authUser } = useAuth();
     const [materials, setMaterials] = useState<any[]>([]);
     const [quizzes, setQuizzes] = useState<any[]>([]);
+    const [streams, setStreams] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes' | 'history'>('materials');
+    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes' | 'history' | 'streams'>('materials');
 
     useEffect(() => {
         fetchAll();
@@ -445,10 +446,11 @@ const StudentDashboard: React.FC = () => {
         if (!token) return;
         const headers = { 'Authorization': `Bearer ${token}` };
         try {
-            const [matRes, quizRes, profRes] = await Promise.all([
+            const [matRes, quizRes, profRes, streamRes] = await Promise.all([
                 fetch(`${BASE_URL}/api/materials`, { headers }),
                 fetch(`${BASE_URL}/api/quizzes`, { headers }),
                 fetch(`${BASE_URL}/api/auth/me`, { headers }),
+                fetch(`${BASE_URL}/api/streams`, { headers })
             ]);
             if (matRes.status === 401 || quizRes.status === 401 || profRes.status === 401) {
                 // Simplest way in this structure is to clear localStorage and redirect
@@ -458,6 +460,7 @@ const StudentDashboard: React.FC = () => {
             }
             if (matRes.ok) setMaterials(await matRes.json());
             if (quizRes.ok) setQuizzes(await quizRes.json());
+            if (streamRes.ok) setStreams(await streamRes.json());
             if (profRes.ok) setUser(await profRes.json());
         } catch (err) {
             console.error(err);
@@ -476,6 +479,7 @@ const StudentDashboard: React.FC = () => {
     const initials = (authUser?.name || 'S').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     const tabs = [
+        { key: 'streams', label: '🔴 Live Classes', count: streams.length },
         { key: 'materials', label: '📚 Materials', count: materials.length },
         { key: 'quizzes', label: '✏️ Quizzes', count: quizzes.length },
         { key: 'history', label: '📊 Quiz History', count: quizHistory.length },
@@ -525,6 +529,7 @@ const StudentDashboard: React.FC = () => {
                 {/* ── Stats Row ── */}
                 <div className="relative grid grid-cols-3 gap-4 mt-8">
                     {[
+                        { icon: '🔴', label: 'Live Classes', value: streams.length },
                         { icon: '📄', label: 'Study Materials', value: materials.length },
                         { icon: '✏️', label: 'Quizzes Available', value: quizzes.length },
                         { icon: '⭐', label: 'Avg. Quiz Score', value: `${avgScore}%` },
@@ -635,6 +640,41 @@ const StudentDashboard: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                )
+            )}
+
+            {activeTab === 'streams' && (
+                streams.length === 0 ? (
+                    <EmptyState icon="🔴" title="No Live Classes Currently" desc="There are no active live sessions running right now." />
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {streams.map(s => (
+                            <div key={s._id} className="group relative bg-white rounded-2xl border border-rose-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col pt-1">
+                                <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-red-500 via-rose-500 to-pink-500" />
+                                <div className="p-5 flex flex-col flex-1">
+                                    <div className="flex items-start gap-3 mb-4">
+                                        <div className="relative flex h-4 w-4 mt-1">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500"></span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-gray-900 text-lg leading-snug break-words">{s.title}</h3>
+                                            <p className="text-sm text-gray-500 mt-0.5 font-medium">Teacher: {s.teacherId?.name || 'Unknown'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-1.5 flex-wrap mb-6">
+                                        {s.course && <span className="bg-rose-50 text-rose-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-rose-100">🎓 {s.course}</span>}
+                                        {s.branch && <span className="bg-red-50 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-red-100">🌿 {s.branch}</span>}
+                                    </div>
+                                    <a href={s.embedUrl} target="_blank" rel="noopener noreferrer"
+                                        className="mt-auto flex items-center justify-center gap-2 w-full text-center bg-gradient-to-r from-rose-500 to-red-600 text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition shadow-md shadow-rose-200">
+                                        ▶ Join Live Session
+                                    </a>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )
             )}

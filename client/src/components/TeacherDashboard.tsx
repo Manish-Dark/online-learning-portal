@@ -144,6 +144,18 @@ const MaterialForm: React.FC<{
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(data)
                 });
+            } else if (mode === 'stream') {
+                if (!data.linkUrl) { setStatus('Please provide the stream embed URL.'); setLoading(false); return; }
+                res = await fetch(`${BASE_URL}/api/streams/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        title: data.title,
+                        embedUrl: data.linkUrl,
+                        course: data.course,
+                        branch: data.branch
+                    })
+                });
             } else {
                 if (!files?.length) { setStatus('Please select a file.'); setLoading(false); return; }
                 const fd = new FormData();
@@ -168,9 +180,9 @@ const MaterialForm: React.FC<{
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-                <div className={`px-6 py-5 flex justify-between items-center ${mode === 'upload' ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gradient-to-r from-violet-600 to-purple-600'}`}>
+                <div className={`px-6 py-5 flex justify-between items-center ${mode === 'upload' ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : mode === 'stream' ? 'bg-gradient-to-r from-rose-600 to-red-600' : 'bg-gradient-to-r from-violet-600 to-purple-600'}`}>
                     <h3 className="text-xl font-bold text-white">
-                        {mode === 'upload' ? '📄 Upload Study Material' : '🔗 Share External Link'}
+                        {mode === 'upload' ? '📄 Upload Study Material' : mode === 'stream' ? '🔴 Start Live Stream' : '🔗 Share External Link'}
                     </h3>
                     <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">×</button>
                 </div>
@@ -187,19 +199,21 @@ const MaterialForm: React.FC<{
                             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                     </div>
 
-                    {mode === 'link' && (
+                    {(mode === 'link' || mode === 'stream') && (
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">Link URL *</label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">{mode === 'stream' ? 'Video Embed URL (e.g. YouTube Live) *' : 'Link URL *'}</label>
                             <input type="url" required placeholder="https://..." value={data.linkUrl} onChange={e => setData(p => ({ ...p, linkUrl: e.target.value }))}
                                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
                         </div>
                     )}
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                        <textarea value={data.description} onChange={e => setData(p => ({ ...p, description: e.target.value }))} rows={2}
-                            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
-                    </div>
+                    {mode !== 'stream' && (
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                            <textarea value={data.description} onChange={e => setData(p => ({ ...p, description: e.target.value }))} rows={2}
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -242,8 +256,8 @@ const MaterialForm: React.FC<{
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition">Cancel</button>
                         <button type="submit" disabled={loading}
-                            className={`flex-1 py-2.5 text-white font-bold rounded-xl transition ${mode === 'upload' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90' : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:opacity-90'} disabled:opacity-50`}>
-                            {loading ? 'Working...' : mode === 'upload' ? 'Upload' : 'Share Link'}
+                            className={`flex-1 py-2.5 text-white font-bold rounded-xl transition ${mode === 'upload' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:opacity-90' : mode === 'stream' ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:opacity-90' : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:opacity-90'} disabled:opacity-50`}>
+                            {loading ? 'Working...' : mode === 'upload' ? 'Upload' : mode === 'stream' ? 'Go Live' : 'Share Link'}
                         </button>
                     </div>
                 </form>
@@ -258,10 +272,11 @@ const TeacherDashboard: React.FC = () => {
     const [materials, setMaterials] = useState<any[]>([]);
     const [quizzes, setQuizzes] = useState<any[]>([]);
     const [academicCourses, setAcademicCourses] = useState<AcademicCourse[]>([]);
-    const [formMode, setFormMode] = useState<'none' | 'upload' | 'link'>('none');
+    const [formMode, setFormMode] = useState<'none' | 'upload' | 'link' | 'stream'>('none');
     const [modalResults, setModalResults] = useState<any[] | null>(null);
     const [previewQuiz, setPreviewQuiz] = useState<any | null>(null);
-    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes'>('materials');
+    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes' | 'streams'>('materials');
+    const [streams, setStreams] = useState<any[]>([]);
 
     useEffect(() => { fetchAll(); }, []);
 
@@ -272,10 +287,11 @@ const TeacherDashboard: React.FC = () => {
         if (!token) return;
         const headers = { 'Authorization': `Bearer ${token}` };
         try {
-            const [matRes, quizRes, settRes] = await Promise.all([
+            const [matRes, quizRes, settRes, streamRes] = await Promise.all([
                 fetch(`${BASE_URL}/api/materials`, { headers }),
                 fetch(`${BASE_URL}/api/quizzes`, { headers }),
-                fetch(`${BASE_URL}/api/site-settings`)
+                fetch(`${BASE_URL}/api/site-settings`),
+                fetch(`${BASE_URL}/api/streams/history`, { headers })
             ]);
             if (matRes.status === 401 || quizRes.status === 401) {
                 localStorage.clear();
@@ -284,6 +300,7 @@ const TeacherDashboard: React.FC = () => {
             }
             if (matRes.ok) setMaterials(await matRes.json());
             if (quizRes.ok) setQuizzes(await quizRes.json());
+            if (streamRes.ok) setStreams(await streamRes.json());
             if (settRes.ok) {
                 const s = await settRes.json();
                 if (s.academicCourses?.length) setAcademicCourses(s.academicCourses);
@@ -291,9 +308,14 @@ const TeacherDashboard: React.FC = () => {
         } catch (err) { console.error(err); }
     };
 
-    const handleDelete = async (type: 'materials' | 'quizzes', id: string) => {
+    const handleDelete = async (type: 'materials' | 'quizzes' | 'streams', id: string) => {
         if (!window.confirm('Are you sure?')) return;
-        await fetch(`${BASE_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
+        
+        if (type === 'streams') {
+            await fetch(`${BASE_URL}/api/streams/${id}/stop`, { method: 'PUT', headers: { 'Authorization': `Bearer ${getToken()}` } });
+        } else {
+            await fetch(`${BASE_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
+        }
         fetchAll();
     };
 
@@ -352,10 +374,11 @@ const TeacherDashboard: React.FC = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="relative grid grid-cols-2 gap-4 mt-8">
+                <div className="relative grid grid-cols-3 gap-4 mt-8">
                     {[
                         { icon: '📄', label: 'Materials Uploaded', value: materials.length },
                         { icon: '✏️', label: 'Quizzes Created', value: quizzes.length },
+                        { icon: '🔴', label: 'Total Streams', value: streams.length },
                     ].map(s => (
                         <div key={s.label} className="bg-white/15 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/20">
                             <div className="text-2xl">{s.icon}</div>
@@ -373,9 +396,12 @@ const TeacherDashboard: React.FC = () => {
                     <ActionCard icon="📁" title="Upload Files" desc="PDF, Word, PPT, Excel, Images & more"
                         onClick={() => setFormMode('upload')}
                         color="bg-blue-600 text-white border-blue-700 hover:shadow-blue-200 hover:shadow-xl" />
-                    <ActionCard icon="🔗" title="Share Link" desc="YouTube, Google Drive, external resources"
+                    <ActionCard icon="🔗" title="Share Link" desc="Google Drive, External Resources"
                         onClick={() => setFormMode('link')}
                         color="bg-violet-600 text-white border-violet-700 hover:shadow-violet-200 hover:shadow-xl" />
+                    <ActionCard icon="🔴" title="Go Live" desc="Start a new live stream session"
+                        onClick={() => setFormMode('stream')}
+                        color="bg-rose-600 text-white border-rose-700 hover:shadow-rose-200 hover:shadow-xl" />
                     <ActionCard icon="✏️" title="Create Quiz" desc="Build assessments for your students"
                         to="/create-quiz/general"
                         color="bg-emerald-600 text-white border-emerald-700 hover:shadow-emerald-200 hover:shadow-xl" />
@@ -384,10 +410,11 @@ const TeacherDashboard: React.FC = () => {
 
             {/* ── Tabs ── */}
             <div>
-                <div className="flex gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit mb-6">
+                <div className="flex gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit mb-6 flex-wrap">
                     {[
                         { key: 'materials', label: '📄 Materials', count: materials.length },
                         { key: 'quizzes', label: '✏️ Quizzes', count: quizzes.length },
+                        { key: 'streams', label: '🔴 Live Streams', count: streams.length },
                     ].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
                             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab.key ? 'bg-white shadow text-emerald-700' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -510,6 +537,58 @@ const TeacherDashboard: React.FC = () => {
                                                         className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg font-semibold transition">
                                                         🗑 Delete
                                                     </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )
+                )}
+
+                {/* Streams Table */}
+                {activeTab === 'streams' && (
+                    streams.length === 0 ? (
+                        <TeacherEmpty icon="🔴" title="No Live Streams" desc="Click 'Go Live' above to start your first session." />
+                    ) : (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full">
+                                    <thead className="bg-gradient-to-r from-rose-50 to-red-50">
+                                        <tr>
+                                            {['Title', 'Target', 'Status', 'Actions'].map((h, i) => (
+                                                <th key={h} className={`px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {streams.map(s => (
+                                            <tr key={s._id} className={`hover:bg-gray-50 transition ${s.isActive ? 'bg-rose-50/30' : ''}`}>
+                                                <td className="px-6 py-4 font-medium text-gray-900 flex items-center gap-2">
+                                                    {s.isActive && <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
+                                                    {s.title}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    {s.course && <span className="bg-rose-50 text-rose-700 text-xs font-medium px-2 py-0.5 rounded-full mr-1">🎓 {s.course}</span>}
+                                                    {s.branch && <span className="bg-red-50 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full">🌿 {s.branch}</span>}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${s.isActive ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                        {s.isActive ? 'LIVE NOW' : 'ENDED'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button onClick={() => window.open(s.embedUrl, '_blank')}
+                                                        className="text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg font-semibold transition mr-2">
+                                                        👁️ View
+                                                    </button>
+                                                    {s.isActive && (
+                                                        <button onClick={() => handleDelete('streams', s._id)}
+                                                            className="text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 px-3 py-1.5 rounded-lg font-semibold transition">
+                                                            ⏹️ Stop Stream
+                                                        </button>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))}

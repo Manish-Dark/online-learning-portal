@@ -30,4 +30,10 @@ export const createCourse = (newCourse: any) => API.post('/courses', newCourse);
 export const createLesson = (newLesson: any) => API.post('/lessons', newLesson);
 export const fetchLessons = (courseId: string) => API.get(`/lessons/${courseId}`);
 
+// Live Streams
+export const fetchActiveStreams = () => API.get('/streams');
+export const fetchStreamHistory = () => API.get('/streams/history');
+export const startLiveStream = (data: any) => API.post('/streams/start', data);
+export const stopLiveStream = (id: string) => API.put(`/streams/${id}/stop`);
+
 export default API;
