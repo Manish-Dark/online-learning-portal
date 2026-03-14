@@ -79,6 +79,7 @@ const TakeQuiz: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900">{quiz.title}</h1>
                 <p className="text-gray-500 mt-1">
                     {quiz.questions.length} Questions • {quiz.course} {quiz.branch ? `• ${quiz.branch}` : ''}
+                    {quiz.createdBy?.name && ` • Teacher: ${quiz.createdBy.name}`}
                 </p>
             </div>
 

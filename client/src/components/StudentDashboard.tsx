@@ -356,7 +356,7 @@ const MaterialCard: React.FC<{ material: any }> = ({ material }) => {
                         <span className="text-2xl">{icon}</span>
                         <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-gray-900 text-base leading-snug line-clamp-2">{material.title}</h3>
-                            <p className="text-xs text-gray-500 mt-0.5">{material.uploadedBy?.name || 'Teacher'}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">Teacher: {material.uploadedBy?.name || 'Unknown'}</p>
                         </div>
                         {ext && (
                             <span className="shrink-0 text-xs font-bold uppercase bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">{ext}</span>
@@ -403,7 +403,10 @@ const QuizCard: React.FC<{ quiz: any }> = ({ quiz }) => (
         <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500" />
         <div className="p-5 flex flex-col flex-1">
             <div className="flex items-start justify-between gap-2 mb-3">
-                <h3 className="font-bold text-gray-900 text-base leading-snug">{quiz.title}</h3>
+                <div>
+                    <h3 className="font-bold text-gray-900 text-base leading-snug">{quiz.title}</h3>
+                    {quiz.createdBy?.name && <p className="text-xs text-gray-500 mt-0.5">Teacher: {quiz.createdBy.name}</p>}
+                </div>
                 <span className="shrink-0 bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
                     {quiz.questions?.length || 0} Qs
                 </span>

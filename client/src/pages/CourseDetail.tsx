@@ -113,7 +113,10 @@ const CourseDetail: React.FC = () => {
                                         onClick={() => setShowQuiz(quiz)}
                                         className="w-full text-left p-3 border rounded-md hover:bg-gray-50 text-sm font-medium text-primary flex justify-between items-center"
                                     >
-                                        <span>{quiz.title}</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-gray-800 font-semibold">{quiz.title}</span>
+                                            {quiz.createdBy?.name && <span className="text-xs text-gray-500 mt-0.5">Teacher: {quiz.createdBy.name}</span>}
+                                        </div>
                                         <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">Start</span>
                                     </button>
                                 ))

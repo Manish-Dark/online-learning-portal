@@ -44,7 +44,9 @@ const getQuizzes = async (req, res) => {
             query.createdBy = userId;
         }
 
-        let quizzes = await Quiz.find(query).sort({ createdAt: -1 });
+        let quizzes = await Quiz.find(query)
+            .populate('createdBy', 'name email')
+            .sort({ createdAt: -1 });
 
         if (userRole === 'student') {
             const student = await Student.findById(userId);
@@ -66,7 +68,7 @@ const getQuizzes = async (req, res) => {
 const getQuiz = async (req, res) => {
     const { id } = req.params;
     try {
-        const quiz = await Quiz.findById(id);
+        const quiz = await Quiz.findById(id).populate('createdBy', 'name email');
         res.status(200).json(quiz);
     } catch (error) {
         res.status(404).json({ message: error.message });
