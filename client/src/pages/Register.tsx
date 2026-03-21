@@ -163,45 +163,49 @@ const Register: React.FC = () => {
                                 </select>
                             </div>
 
-                            {/* Dynamic Course Dropdown */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Course</label>
-                                <select
-                                    className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-200 ease-in-out sm:text-sm shadow-sm cursor-pointer"
-                                    value={formData.course}
-                                    onChange={(e) => setFormData({ ...formData, course: e.target.value, branch: '' })}
-                                    required
-                                >
-                                    <option value="">
-                                        {academicCourses.length === 0 ? 'Loading...' : 'Select Course'}
-                                    </option>
-                                    {academicCourses.map(c => (
-                                        <option key={c.name} value={c.name}>{c.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Dynamic Branch Dropdown – only shown if selected course has branches */}
-                            <div className="opacity-100 transition-opacity duration-300">
-                                {hasBranches ? (
-                                    <>
-                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Branch</label>
+                            {/* Dynamic Course & Branch Dropdowns – hidden for admin */}
+                            {formData.role !== 'admin' && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Course</label>
                                         <select
                                             className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-200 ease-in-out sm:text-sm shadow-sm cursor-pointer"
-                                            value={formData.branch}
-                                            onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                                            value={formData.course}
+                                            onChange={(e) => setFormData({ ...formData, course: e.target.value, branch: '' })}
                                             required
                                         >
-                                            <option value="">Select Branch</option>
-                                            {selectedCourseData!.branches.map(b => (
-                                                <option key={b} value={b}>{b}</option>
+                                            <option value="">
+                                                {academicCourses.length === 0 ? 'Loading...' : 'Select Course'}
+                                            </option>
+                                            {academicCourses.map(c => (
+                                                <option key={c.name} value={c.name}>{c.name}</option>
                                             ))}
                                         </select>
-                                    </>
-                                ) : (
-                                    <div className="h-full"></div> // placeholder for grid
-                                )}
-                            </div>
+                                    </div>
+
+                                    {/* Dynamic Branch Dropdown – only shown if selected course has branches */}
+                                    <div className="opacity-100 transition-opacity duration-300">
+                                        {hasBranches ? (
+                                            <>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">Branch</label>
+                                                <select
+                                                    className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-200 ease-in-out sm:text-sm shadow-sm cursor-pointer"
+                                                    value={formData.branch}
+                                                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="">Select Branch</option>
+                                                    {selectedCourseData!.branches.map(b => (
+                                                        <option key={b} value={b}>{b}</option>
+                                                    ))}
+                                                </select>
+                                            </>
+                                        ) : (
+                                            <div className="h-full"></div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
 
                             {formData.role === 'student' && (
                                 <>

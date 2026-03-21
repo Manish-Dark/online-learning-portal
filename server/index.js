@@ -54,6 +54,7 @@ const lessonRoutes = require('./routes/lesson');
 const adminRoutes = require('./routes/admin');
 
 const quizRoutes = require('./routes/quiz');
+const teacherRoutes = require('./routes/teacher');
 
 // Routes Configuration
 // Routes Configuration
@@ -62,6 +63,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/quizzes', quizRoutes);
+app.use('/api/teacher', teacherRoutes);
 
 const materialRoutes = require('./routes/material');
 const siteSettingsRoutes = require('./routes/siteSettings');

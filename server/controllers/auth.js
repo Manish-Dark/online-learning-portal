@@ -16,9 +16,8 @@ const register = async (req, res) => {
         const existingUser = await Model.findOne({ email });
         if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
-        // isApproved is FALSE for everyone by default (Student & Teacher), requiring Admin approval.
-        // Admin is auto-approved if they manage to register via this route (though typically seeded).
-        const isApproved = role === 'admin' ? true : false;
+        // isApproved is FALSE for everyone by default, requiring approval from an existing admin.
+        const isApproved = false;
 
         const user = new Model({
             name,
@@ -75,7 +74,7 @@ const login = async (req, res) => {
 
         if (!isPasswordCorrect) return res.status(400).json({ message: 'Invalid credentials' });
 
-        if (normalizedRole !== 'admin' && user.isApproved === false) {
+        if (user.isApproved === false) {
             return res.status(403).json({ message: 'Account not approved yet. Please wait for admin approval.' });
         }
 

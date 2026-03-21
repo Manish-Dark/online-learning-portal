@@ -108,7 +108,7 @@ const QuizPreviewModal: React.FC<{ quiz: any; onClose: () => void }> = ({ quiz, 
 
 // ── Upload / Link Form ─────────────────────────────────────────────────────
 const MaterialForm: React.FC<{
-    mode: 'upload' | 'link';
+    mode: 'upload' | 'link' | 'stream';
     academicCourses: AcademicCourse[];
     onClose: () => void;
     onSuccess: () => void;
@@ -275,8 +275,13 @@ const TeacherDashboard: React.FC = () => {
     const [formMode, setFormMode] = useState<'none' | 'upload' | 'link' | 'stream'>('none');
     const [modalResults, setModalResults] = useState<any[] | null>(null);
     const [previewQuiz, setPreviewQuiz] = useState<any | null>(null);
-    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes' | 'streams'>('materials');
+    const [activeTab, setActiveTab] = useState<'materials' | 'quizzes' | 'streams' | 'students'>('materials');
     const [streams, setStreams] = useState<any[]>([]);
+    
+    // Student Management State
+    const [students, setStudents] = useState<any[]>([]);
+    const [editStudent, setEditStudent] = useState<any | null>(null);
+    const [editForm, setEditForm] = useState<any>({});
 
     useEffect(() => { fetchAll(); }, []);
 
@@ -287,11 +292,12 @@ const TeacherDashboard: React.FC = () => {
         if (!token) return;
         const headers = { 'Authorization': `Bearer ${token}` };
         try {
-            const [matRes, quizRes, settRes, streamRes] = await Promise.all([
+            const [matRes, quizRes, settRes, streamRes, studRes] = await Promise.all([
                 fetch(`${BASE_URL}/api/materials`, { headers }),
                 fetch(`${BASE_URL}/api/quizzes`, { headers }),
                 fetch(`${BASE_URL}/api/site-settings`),
-                fetch(`${BASE_URL}/api/streams/history`, { headers })
+                fetch(`${BASE_URL}/api/streams/history`, { headers }),
+                fetch(`${BASE_URL}/api/teacher/students`, { headers })
             ]);
             if (matRes.status === 401 || quizRes.status === 401) {
                 localStorage.clear();
@@ -301,11 +307,53 @@ const TeacherDashboard: React.FC = () => {
             if (matRes.ok) setMaterials(await matRes.json());
             if (quizRes.ok) setQuizzes(await quizRes.json());
             if (streamRes.ok) setStreams(await streamRes.json());
+            if (studRes.ok) setStudents(await studRes.json());
             if (settRes.ok) {
                 const s = await settRes.json();
                 if (s.academicCourses?.length) setAcademicCourses(s.academicCourses);
             }
         } catch (err) { console.error(err); }
+    };
+
+    const handleDeleteStudent = async (id: string) => {
+        if (!window.confirm('Delete this student? This action cannot be undone.')) return;
+        try {
+            const res = await fetch(`${BASE_URL}/api/teacher/students/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
+            if (res.ok) fetchAll();
+            else alert('Failed to delete student.');
+        } catch (err) { console.error(err); }
+    };
+
+    const handleUpdateStudent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch(`${BASE_URL}/api/teacher/students/${editStudent._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+                body: JSON.stringify(editForm)
+            });
+            if (res.ok) {
+                fetchAll();
+                setEditStudent(null);
+                alert('Student updated successfully.');
+            } else {
+                const err = await res.json();
+                alert(err.message || 'Error updating student');
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const openEditModal = (student: any) => {
+        setEditStudent(student);
+        setEditForm({
+            name: student.name,
+            email: student.email,
+            password: '', 
+            fatherName: student.fatherName || '',
+            motherName: student.motherName || '',
+            course: student.course || '',
+            branch: student.branch || ''
+        });
     };
 
     const handleDelete = async (type: 'materials' | 'quizzes' | 'streams', id: string) => {
@@ -415,6 +463,7 @@ const TeacherDashboard: React.FC = () => {
                         { key: 'materials', label: '📄 Materials', count: materials.length },
                         { key: 'quizzes', label: '✏️ Quizzes', count: quizzes.length },
                         { key: 'streams', label: '🔴 Live Streams', count: streams.length },
+                        { key: 'students', label: '👥 Students', count: students.length },
                     ].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
                             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab.key ? 'bg-white shadow text-emerald-700' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -598,6 +647,73 @@ const TeacherDashboard: React.FC = () => {
                         </div>
                     )
                 )}
+
+                {/* Students Table */}
+                {activeTab === 'students' && (
+                    students.length === 0 ? (
+                        <TeacherEmpty icon="👥" title="No Students Found" desc="Registered students will appear here." />
+                    ) : (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full">
+                                    <thead className="bg-gradient-to-r from-indigo-50 to-blue-50">
+                                        <tr>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User Details</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Academic Info</th>
+                                            <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {students.map((student) => (
+                                            <tr key={student._id} className="hover:bg-gray-50 transition">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div className="h-10 w-10 shrink-0 bg-indigo-50 text-indigo-600 flex items-center justify-center rounded-full font-bold text-lg border border-indigo-100">
+                                                            {student.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div className="ml-4">
+                                                            <div className="text-sm font-bold text-gray-900">{student.name}</div>
+                                                            <div className="text-sm text-gray-500">{student.email}</div>
+                                                            <div className="text-xs text-gray-400 mt-0.5">Parents: {student.fatherName || 'N/A'}, {student.motherName || 'N/A'}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm text-gray-900 font-medium">{student.course || 'No Course'}</div>
+                                                    <div className="text-xs text-gray-500">{student.branch || 'No Branch'}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                    {student.isApproved ? (
+                                                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">Approved</span>
+                                                    ) : (
+                                                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <div className="flex justify-end gap-3">
+                                                        <button 
+                                                            onClick={() => openEditModal(student)}
+                                                            className="text-indigo-600 hover:text-indigo-900 font-semibold"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteStudent(student._id)}
+                                                            className="text-red-500 hover:text-red-700 font-semibold"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )
+                )}
             </div>
 
             {/* Modals */}
@@ -609,6 +725,67 @@ const TeacherDashboard: React.FC = () => {
             )}
             {previewQuiz !== null && (
                 <QuizPreviewModal quiz={previewQuiz} onClose={() => setPreviewQuiz(null)} />
+            )}
+            {editStudent && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                        <div className="px-6 py-4 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100">
+                            <h3 className="text-xl font-bold text-gray-900">Edit Student</h3>
+                            <button onClick={() => setEditStudent(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                        </div>
+                        <form onSubmit={handleUpdateStudent} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                                    <input type="text" required className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                        value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Email <span className="text-xs font-normal text-gray-400">(login ID)</span></label>
+                                    <input type="email" required className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                        value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">New Password <span className="text-xs font-normal text-gray-400">(Leave blank to keep current)</span></label>
+                                    <input type="text" placeholder="Type new password..." className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                        value={editForm.password} onChange={e => setEditForm({...editForm, password: e.target.value})} />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Father's Name</label>
+                                    <input type="text" className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white outline-none" 
+                                        value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Mother's Name</label>
+                                    <input type="text" className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white outline-none" 
+                                        value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} />
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Course</label>
+                                    <select className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white outline-none" 
+                                        value={editForm.course} onChange={e => setEditForm({...editForm, course: e.target.value, branch: ''})}>
+                                        <option value="">Select Course</option>
+                                        {academicCourses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Branch</label>
+                                    <select className="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white outline-none" 
+                                        value={editForm.branch} onChange={e => setEditForm({...editForm, branch: e.target.value})}>
+                                        <option value="">Select Branch</option>
+                                        {academicCourses.find(c => c.name === editForm.course)?.branches.map(b => (
+                                            <option key={b} value={b}>{b}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 justify-end pt-4 border-t mt-6 border-gray-100">
+                                <button type="button" onClick={() => setEditStudent(null)} className="px-5 py-2.5 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold transition">Cancel</button>
+                                <button type="submit" className="px-5 py-2.5 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 font-bold shadow-md hover:shadow-lg transition">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );

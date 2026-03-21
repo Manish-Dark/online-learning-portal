@@ -10,6 +10,14 @@ const AdminDashboard: React.FC = () => {
     const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0 });
     const [pendingTeachers, setPendingTeachers] = useState<any[]>([]);
     const [pendingStudents, setPendingStudents] = useState<any[]>([]);
+    const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
+    const [activeAdmins, setActiveAdmins] = useState<any[]>([]);
+    const [allTeachers, setAllTeachers] = useState<any[]>([]);
+    const [allAdmins, setAllAdmins] = useState<any[]>([]);
+    const [userTab, setUserTab] = useState<'teacher' | 'admin'>('teacher');
+    const [editUser, setEditUser] = useState<any | null>(null);
+    const [editRole, setEditRole] = useState<string>('');
+    const [editForm, setEditForm] = useState<any>({});
     const [academicCourses, setAcademicCourses] = useState<AcademicCourse[]>([]);
     const [newCourseName, setNewCourseName] = useState('');
     const [newBranches, setNewBranches] = useState<{ [courseName: string]: string }>({});
@@ -47,6 +55,16 @@ const AdminDashboard: React.FC = () => {
             setPendingTeachers(teachersRes.data);
             const studentsRes = await API.get('/admin/students/pending');
             setPendingStudents(studentsRes.data);
+            const pendingAdminsRes = await API.get('/admin/admins/pending');
+            setPendingAdmins(pendingAdminsRes.data);
+            const activeAdminsRes = await API.get('/admin/admins/active');
+            setActiveAdmins(activeAdminsRes.data);
+            const [teachRes, admRes] = await Promise.all([
+                API.get('/admin/users/teachers'),
+                API.get('/admin/users/admins'),
+            ]);
+            setAllTeachers(teachRes.data);
+            setAllAdmins(admRes.data);
             const settingsRes = await API.get('/site-settings');
             setSiteSettings(settingsRes.data);
             if (settingsRes.data.academicCourses) {
@@ -113,6 +131,64 @@ const AdminDashboard: React.FC = () => {
         }
     }
 
+    const handleApproveAdmin = async (id: string) => {
+        try {
+            await API.put(`/admin/admins/${id}/approve`);
+            loadData();
+            alert('Admin approved successfully! An email notification has been sent.');
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Error approving admin');
+        }
+    };
+
+    const handleRejectAdmin = async (id: string) => {
+        if (!window.confirm('Are you sure you want to reject this admin?')) return;
+        try {
+            await API.put(`/admin/admins/${id}/reject`);
+            loadData();
+            alert('Admin rejected.');
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Error rejecting admin');
+        }
+    };
+
+    const handleDeleteUser = async (id: string, role: string) => {
+        if (!window.confirm(`Are you sure you want to delete this ${role}? This action cannot be undone.`)) return;
+        try {
+            await API.delete(`/admin/users/${role}/${id}`);
+            loadData();
+            alert(`${role.charAt(0).toUpperCase() + role.slice(1)} deleted successfully.`);
+        } catch (error: any) {
+            alert(error.response?.data?.message || `Error deleting ${role}`);
+        }
+    };
+
+    const handleUpdateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await API.put(`/admin/users/${editRole}/${editUser._id}`, editForm);
+            loadData();
+            setEditUser(null);
+            alert(`${editRole.charAt(0).toUpperCase() + editRole.slice(1)} updated successfully.`);
+        } catch (error: any) {
+            alert(error.response?.data?.message || `Error updating ${editRole}`);
+        }
+    };
+
+    const openEditModal = (user: any, role: string) => {
+        setEditUser(user);
+        setEditRole(role);
+        setEditForm({
+            name: user.name,
+            email: user.email,
+            password: '', // blank by default, only update if typed
+            fatherName: '',
+            motherName: '',
+            course: '',
+            branch: ''
+        });
+    };
+
     const handleReject = async (id: string, role: 'teacher' | 'student') => {
         if (!window.confirm("Are you sure you want to reject this user?")) return;
         try {
@@ -126,10 +202,32 @@ const AdminDashboard: React.FC = () => {
         }
     }
 
+    const handleApproveAll = async (role: 'teacher' | 'student' | 'admin') => {
+        if (!window.confirm(`Are you sure you want to approve all pending ${role}s?`)) return;
+        try {
+            await API.put(`/admin/${role}s/approve-all`);
+            loadData();
+            alert(`All pending ${role}s approved successfully!`);
+        } catch (error: any) {
+            console.error(error);
+            alert(`Failed to approve all ${role}s: ${error.response?.data?.message || 'Error'}`);
+        }
+    };
+
     const renderTable = (users: any[], role: 'teacher' | 'student', title: string) => (
         <div className="mb-10 animate-fade-in-up">
-            <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center gap-2">
-                {role === 'teacher' ? '👨‍🏫' : '👨‍🎓'} {title}
+            <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    {role === 'teacher' ? '👨‍🏫' : '👨‍🎓'} {title}
+                </div>
+                {users.length > 0 && (
+                    <button 
+                        onClick={() => handleApproveAll(role)}
+                        className="text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-1.5 rounded-lg transition font-bold shadow-sm"
+                    >
+                        Approve All
+                    </button>
+                )}
             </h3>
             {users.length === 0 ? (
                 <div className="bg-white/60 backdrop-blur border border-white p-10 rounded-3xl shadow-sm text-center">
@@ -769,6 +867,229 @@ const AdminDashboard: React.FC = () => {
 
             {renderTable(pendingTeachers, 'teacher', 'Pending Teacher Approvals')}
             {renderTable(pendingStudents, 'student', 'Pending Student Approvals')}
+
+            {/* ── PENDING ADMIN APPROVALS ── */}
+            <div className="mb-10 animate-fade-in-up">
+                <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        🛡️ Pending Admin Approvals
+                    </div>
+                    {pendingAdmins.length > 0 && (
+                        <button 
+                            onClick={() => handleApproveAll('admin')}
+                            className="text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-1.5 rounded-lg transition font-bold shadow-sm"
+                        >
+                            Approve All
+                        </button>
+                    )}
+                </h3>
+                {pendingAdmins.length === 0 ? (
+                    <div className="bg-white/60 backdrop-blur border border-white p-10 rounded-3xl shadow-sm text-center">
+                        <div className="text-4xl mb-3 opacity-50">✨</div>
+                        <p className="text-gray-500 font-medium">No pending admin approvals at the moment.</p>
+                    </div>
+                ) : (
+                    <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-100">
+                                <thead className="bg-gray-50/50">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User Details</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {pendingAdmins.map((admin) => (
+                                        <tr key={admin._id} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="h-10 w-10 shrink-0 bg-orange-100 text-orange-700 flex items-center justify-center rounded-full font-bold text-lg">
+                                                        {admin.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="ml-4">
+                                                        <div className="text-sm font-bold text-gray-900">{admin.name}</div>
+                                                        <div className="text-sm text-gray-500">{admin.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">admin</span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleApproveAdmin(admin._id)}
+                                                        className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white border border-emerald-500/20 px-4 py-1.5 rounded-lg transition-all shadow-sm"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleRejectAdmin(admin._id)}
+                                                        className="bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white border border-red-500/20 px-4 py-1.5 rounded-lg transition-all shadow-sm"
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ── ACTIVE ADMINS ── */}
+            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white/50 animate-fade-in-up">
+                <h3 className="text-xl font-bold mb-6 text-gray-900 flex items-center gap-2">👑 Active Admins</h3>
+                {activeAdmins.length === 0 ? (
+                    <div className="text-center py-8">
+                        <div className="text-4xl mb-3 opacity-50">🛡️</div>
+                        <p className="text-gray-500 font-medium">No active admins found.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {activeAdmins.map((admin) => (
+                            <div key={admin._id} className="flex items-center gap-4 p-4 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 shadow-sm">
+                                <div className="h-12 w-12 shrink-0 bg-indigo-600 text-white flex items-center justify-center rounded-full font-bold text-xl shadow">
+                                    {admin.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">{admin.name}</p>
+                                    <p className="text-xs text-gray-500 truncate">{admin.email}</p>
+                                    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span> Active
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            {/* ── USER MANAGEMENT SECTION ── */}
+            <div className="bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white/50 animate-fade-in-up mt-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">👥 User Management</h3>
+                    
+                    {/* Tab Switcher */}
+                    <div className="flex bg-gray-100/80 p-1 rounded-xl w-fit">
+                        {(['teacher', 'admin'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setUserTab(tab)}
+                                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 capitalize ${
+                                    userTab === tab ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                                }`}
+                            >
+                                {tab}s
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* User Table */}
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-100">
+                        <thead className="bg-gray-50/50">
+                            <tr>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User Details</th>
+                                <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {(userTab === 'teacher' ? allTeachers : allAdmins).map((user) => (
+                                <tr key={user._id} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                            <div className="h-10 w-10 shrink-0 bg-indigo-50 text-indigo-600 flex items-center justify-center rounded-full font-bold text-lg border border-indigo-100">
+                                                {user.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div className="ml-4">
+                                                <div className="text-sm font-bold text-gray-900">{user.name}</div>
+                                                <div className="text-sm text-gray-500">{user.email}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        {user.isApproved ? (
+                                            <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">Approved</span>
+                                        ) : (
+                                            <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                        )}
+                                    </td>
+                                    
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end gap-3">
+                                            <button 
+                                                onClick={() => openEditModal(user, userTab)}
+                                                className="text-indigo-600 hover:text-indigo-900 font-semibold"
+                                            >
+                                                Edit
+                                            </button>
+                                            
+                                            {/* Hide delete button for the master admin account to prevent accidental lockout */}
+                                            {!(userTab === 'admin' && user.email === 'manish1212@gmail.com') && (
+                                                <button 
+                                                    onClick={() => handleDeleteUser(user._id, userTab)}
+                                                    className="text-red-500 hover:text-red-700 font-semibold"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {(userTab === 'teacher' ? allTeachers : allAdmins).length === 0 && (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500 font-medium italic">
+                                        No {userTab}s found.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* ── EDIT USER MODAL ── */}
+            {editUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-lg font-bold text-gray-900">Edit {editRole.charAt(0).toUpperCase() + editRole.slice(1)}</h3>
+                            <button onClick={() => setEditUser(null)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                        </div>
+                        <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                                    <input type="text" required className="w-full px-3 py-2 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                        value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Email <span className="text-xs font-normal text-gray-400">(login ID)</span></label>
+                                    <input type="email" required className="w-full px-3 py-2 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                        value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">New Password <span className="text-xs font-normal text-gray-400">(Leave blank to keep current)</span></label>
+                                    <input type="text" placeholder="Type new password..." className="w-full px-3 py-2 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+                                        value={editForm.password} onChange={e => setEditForm({...editForm, password: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="flex gap-3 justify-end pt-4 border-t mt-6">
+                                <button type="button" onClick={() => setEditUser(null)} className="px-5 py-2 rounded-xl text-gray-600 bg-gray-100 hover:bg-gray-200 font-semibold transition">Cancel</button>
+                                <button type="submit" className="px-5 py-2 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 font-semibold shadow-md transition">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

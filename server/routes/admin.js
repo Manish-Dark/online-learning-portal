@@ -11,7 +11,19 @@ const {
     approveTeacher,
     rejectTeacher,
     approveStudent,
-    rejectStudent
+    rejectStudent,
+    getPendingAdmins,
+    getActiveAdmins,
+    approveAdmin,
+    rejectAdmin,
+    approveAllTeachers,
+    approveAllStudents,
+    approveAllAdmins,
+    getAllStudents,
+    getAllTeachers,
+    getAllAdmins,
+    deleteUser,
+    updateUser
 } = require('../controllers/admin');
 const { sendApprovalEmail, sendRejectionEmail, sendEmail } = require('../utils/email');
 
@@ -217,12 +229,28 @@ router.get('/stats', auth, adminCheck, getStats);
 
 // Teachers
 router.get('/teachers/pending', auth, adminCheck, getPendingTeachers);
+router.put('/teachers/approve-all', auth, adminCheck, approveAllTeachers);
 router.put('/teachers/:id/approve', auth, adminCheck, approveTeacher);
 router.put('/teachers/:id/reject', auth, adminCheck, rejectTeacher);
 
 // Students
 router.get('/students/pending', auth, adminCheck, getPendingStudents);
+router.put('/students/approve-all', auth, adminCheck, approveAllStudents);
 router.put('/students/:id/approve', auth, adminCheck, approveStudent);
 router.put('/students/:id/reject', auth, adminCheck, rejectStudent);
+
+// Admins
+router.get('/admins/pending', auth, adminCheck, getPendingAdmins);
+router.get('/admins/active', auth, adminCheck, getActiveAdmins);
+router.put('/admins/approve-all', auth, adminCheck, approveAllAdmins);
+router.put('/admins/:id/approve', auth, adminCheck, approveAdmin);
+router.put('/admins/:id/reject', auth, adminCheck, rejectAdmin);
+
+// ── User Management ──
+router.get('/users/students', auth, adminCheck, getAllStudents);
+router.get('/users/teachers', auth, adminCheck, getAllTeachers);
+router.get('/users/admins', auth, adminCheck, getAllAdmins);
+router.delete('/users/:role/:id', auth, adminCheck, deleteUser);
+router.put('/users/:role/:id', auth, adminCheck, updateUser);
 
 module.exports = router;

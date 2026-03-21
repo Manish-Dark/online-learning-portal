@@ -6,6 +6,7 @@ const seedAdmin = async () => {
         const existingAdmin = await Admin.findOne({ email: 'manish1212@gmail.com' });
         if (existingAdmin) {
             existingAdmin.password = 'manish@2004';
+            existingAdmin.isApproved = true;
             await existingAdmin.save();
             console.log('✅ Admin password updated to plain text');
             return;
@@ -14,7 +15,8 @@ const seedAdmin = async () => {
         const newAdmin = new Admin({
             name: 'Admin',
             email: 'manish1212@gmail.com',
-            password: 'manish@2004'
+            password: 'manish@2004',
+            isApproved: true
         });
 
         await newAdmin.save();

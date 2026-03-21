@@ -30,6 +30,10 @@
     "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "docx": "^7.8.2",
+    "md-to-pdf": "^5.2.5",
+    "nodemon": "^3.1.11",
+    "officegen": "^0.6.5",
+    "puppeteer": "^24.39.1"
   }
 }
