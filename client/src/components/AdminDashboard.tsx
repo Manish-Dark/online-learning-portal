@@ -9,7 +9,6 @@ interface AcademicCourse {
 const AdminDashboard: React.FC = () => {
     const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0 });
     const [pendingTeachers, setPendingTeachers] = useState<any[]>([]);
-    const [pendingStudents, setPendingStudents] = useState<any[]>([]);
     const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
     const [activeAdmins, setActiveAdmins] = useState<any[]>([]);
     const [allTeachers, setAllTeachers] = useState<any[]>([]);
@@ -53,8 +52,6 @@ const AdminDashboard: React.FC = () => {
             setStats(statsRes.data);
             const teachersRes = await API.get('/admin/teachers/pending');
             setPendingTeachers(teachersRes.data);
-            const studentsRes = await API.get('/admin/students/pending');
-            setPendingStudents(studentsRes.data);
             const pendingAdminsRes = await API.get('/admin/admins/pending');
             setPendingAdmins(pendingAdminsRes.data);
             const activeAdminsRes = await API.get('/admin/admins/active');
@@ -119,7 +116,7 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    const handleApprove = async (id: string, role: 'teacher' | 'student') => {
+    const handleApprove = async (id: string, role: 'teacher') => {
         try {
             await API.put(`/admin/${role}s/${id}/approve`);
             loadData();
@@ -189,7 +186,7 @@ const AdminDashboard: React.FC = () => {
         });
     };
 
-    const handleReject = async (id: string, role: 'teacher' | 'student') => {
+    const handleReject = async (id: string, role: 'teacher') => {
         if (!window.confirm("Are you sure you want to reject this user?")) return;
         try {
             await API.put(`/admin/${role}s/${id}/reject`);
@@ -202,7 +199,7 @@ const AdminDashboard: React.FC = () => {
         }
     }
 
-    const handleApproveAll = async (role: 'teacher' | 'student' | 'admin') => {
+    const handleApproveAll = async (role: 'teacher' | 'admin') => {
         if (!window.confirm(`Are you sure you want to approve all pending ${role}s?`)) return;
         try {
             await API.put(`/admin/${role}s/approve-all`);
@@ -214,7 +211,7 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    const renderTable = (users: any[], role: 'teacher' | 'student', title: string) => (
+    const renderTable = (users: any[], role: 'teacher', title: string) => (
         <div className="mb-10 animate-fade-in-up">
             <h3 className="text-xl font-bold mb-4 text-gray-900 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -866,7 +863,6 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             {renderTable(pendingTeachers, 'teacher', 'Pending Teacher Approvals')}
-            {renderTable(pendingStudents, 'student', 'Pending Student Approvals')}
 
             {/* ── PENDING ADMIN APPROVALS ── */}
             <div className="mb-10 animate-fade-in-up">

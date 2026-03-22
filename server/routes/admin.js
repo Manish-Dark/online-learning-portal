@@ -7,17 +7,13 @@ const { auth } = require('../middleware/auth');
 const {
     getStats,
     getPendingTeachers,
-    getPendingStudents,
     approveTeacher,
     rejectTeacher,
-    approveStudent,
-    rejectStudent,
     getPendingAdmins,
     getActiveAdmins,
     approveAdmin,
     rejectAdmin,
     approveAllTeachers,
-    approveAllStudents,
     approveAllAdmins,
     getAllStudents,
     getAllTeachers,
@@ -233,11 +229,7 @@ router.put('/teachers/approve-all', auth, adminCheck, approveAllTeachers);
 router.put('/teachers/:id/approve', auth, adminCheck, approveTeacher);
 router.put('/teachers/:id/reject', auth, adminCheck, rejectTeacher);
 
-// Students
-router.get('/students/pending', auth, adminCheck, getPendingStudents);
-router.put('/students/approve-all', auth, adminCheck, approveAllStudents);
-router.put('/students/:id/approve', auth, adminCheck, approveStudent);
-router.put('/students/:id/reject', auth, adminCheck, rejectStudent);
+// Students (Admin can only view list, approval moved to teacher)
 
 // Admins
 router.get('/admins/pending', auth, adminCheck, getPendingAdmins);

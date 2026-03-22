@@ -280,6 +280,7 @@ const TeacherDashboard: React.FC = () => {
     
     // Student Management State
     const [students, setStudents] = useState<any[]>([]);
+    const [pendingStudents, setPendingStudents] = useState<any[]>([]);
     const [editStudent, setEditStudent] = useState<any | null>(null);
     const [editForm, setEditForm] = useState<any>({});
 
@@ -292,12 +293,13 @@ const TeacherDashboard: React.FC = () => {
         if (!token) return;
         const headers = { 'Authorization': `Bearer ${token}` };
         try {
-            const [matRes, quizRes, settRes, streamRes, studRes] = await Promise.all([
+            const [matRes, quizRes, settRes, streamRes, studRes, pendStudRes] = await Promise.all([
                 fetch(`${BASE_URL}/api/materials`, { headers }),
                 fetch(`${BASE_URL}/api/quizzes`, { headers }),
                 fetch(`${BASE_URL}/api/site-settings`),
                 fetch(`${BASE_URL}/api/streams/history`, { headers }),
-                fetch(`${BASE_URL}/api/teacher/students`, { headers })
+                fetch(`${BASE_URL}/api/teacher/students`, { headers }),
+                fetch(`${BASE_URL}/api/teacher/students/pending`, { headers })
             ]);
             if (matRes.status === 401 || quizRes.status === 401) {
                 localStorage.clear();
@@ -308,6 +310,7 @@ const TeacherDashboard: React.FC = () => {
             if (quizRes.ok) setQuizzes(await quizRes.json());
             if (streamRes.ok) setStreams(await streamRes.json());
             if (studRes.ok) setStudents(await studRes.json());
+            if (pendStudRes.ok) setPendingStudents(await pendStudRes.json());
             if (settRes.ok) {
                 const s = await settRes.json();
                 if (s.academicCourses?.length) setAcademicCourses(s.academicCourses);
@@ -365,6 +368,53 @@ const TeacherDashboard: React.FC = () => {
             await fetch(`${BASE_URL}/api/${type}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getToken()}` } });
         }
         fetchAll();
+    };
+
+    const handleApproveStudent = async (id: string) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/teacher/students/${id}/approve`, { 
+                method: 'PUT', 
+                headers: { 'Authorization': `Bearer ${getToken()}` } 
+            });
+            if (res.ok) {
+                fetchAll();
+                alert('Student approved successfully.');
+            } else {
+                alert('Failed to approve student.');
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const handleRejectStudent = async (id: string) => {
+        if (!window.confirm("Are you sure you want to reject this student?")) return;
+        try {
+            const res = await fetch(`${BASE_URL}/api/teacher/students/${id}/reject`, { 
+                method: 'PUT', 
+                headers: { 'Authorization': `Bearer ${getToken()}` } 
+            });
+            if (res.ok) {
+                fetchAll();
+                alert('Student rejected successfully.');
+            } else {
+                alert('Failed to reject student.');
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const handleApproveAllStudents = async () => {
+        if (!window.confirm("Are you sure you want to approve all pending students?")) return;
+        try {
+            const res = await fetch(`${BASE_URL}/api/teacher/students/approve-all`, { 
+                method: 'PUT', 
+                headers: { 'Authorization': `Bearer ${getToken()}` } 
+            });
+            if (res.ok) {
+                fetchAll();
+                alert('All pending students approved!');
+            } else {
+                alert('Failed to approve all students.');
+            }
+        } catch (err) { console.error(err); }
     };
 
     const handleViewResults = async (quizId: string) => {
@@ -463,7 +513,7 @@ const TeacherDashboard: React.FC = () => {
                         { key: 'materials', label: '📄 Materials', count: materials.length },
                         { key: 'quizzes', label: '✏️ Quizzes', count: quizzes.length },
                         { key: 'streams', label: '🔴 Live Streams', count: streams.length },
-                        { key: 'students', label: '👥 Students', count: students.length },
+                        { key: 'students', label: '👥 Students', count: students.length + pendingStudents.length },
                     ].map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
                             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === tab.key ? 'bg-white shadow text-emerald-700' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -650,9 +700,79 @@ const TeacherDashboard: React.FC = () => {
 
                 {/* Students Table */}
                 {activeTab === 'students' && (
-                    students.length === 0 ? (
-                        <TeacherEmpty icon="👥" title="No Students Found" desc="Registered students will appear here." />
-                    ) : (
+                    <div className="space-y-8">
+                        {/* Pending Students Section */}
+                        {pendingStudents.length > 0 && (
+                            <div className="mb-8 animate-fade-in-up">
+                                <h3 className="text-lg font-bold mb-4 text-gray-900 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        👨‍🎓 Pending Approvals
+                                        <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">{pendingStudents.length}</span>
+                                    </div>
+                                    <button 
+                                        onClick={handleApproveAllStudents}
+                                        className="text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-1.5 rounded-lg transition font-bold shadow-sm"
+                                    >
+                                        Approve All
+                                    </button>
+                                </h3>
+                                <div className="bg-white rounded-2xl border border-yellow-200 shadow-sm overflow-hidden">
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-100">
+                                            <thead className="bg-yellow-50/50">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User Details</th>
+                                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Academic Info</th>
+                                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {pendingStudents.map((student) => (
+                                                    <tr key={student._id} className="hover:bg-gray-50/50 transition-colors">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <div className="h-10 w-10 shrink-0 bg-yellow-100 text-yellow-700 flex flex-col justify-center items-center rounded-full font-bold text-lg border border-yellow-200">
+                                                                    {student.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div className="ml-4">
+                                                                    <div className="text-sm font-bold text-gray-900">{student.name}</div>
+                                                                    <div className="text-sm text-gray-500">{student.email}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="text-sm text-gray-900 font-medium">{student.course || 'No Course'}</div>
+                                                            <div className="text-xs text-gray-500">{student.branch || 'No Branch'}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                            <div className="flex justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => handleApproveStudent(student._id)}
+                                                                    className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 px-4 py-1.5 rounded-lg transition-all font-semibold"
+                                                                >
+                                                                    Approve
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleRejectStudent(student._id)}
+                                                                    className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-1.5 rounded-lg transition-all font-semibold"
+                                                                >
+                                                                    Reject
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Approved Students Section */}
+                        {students.length === 0 ? (
+                            <TeacherEmpty icon="👥" title="No Students Found" desc="Registered students will appear here." />
+                        ) : (
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="min-w-full">
@@ -712,9 +832,10 @@ const TeacherDashboard: React.FC = () => {
                                 </table>
                             </div>
                         </div>
-                    )
-                )}
-            </div>
+                    )}
+                </div>
+            )}
+        </div>
 
             {/* Modals */}
             {formMode !== 'none' && (
