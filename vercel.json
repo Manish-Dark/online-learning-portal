@@ -2,11 +2,11 @@
     "version": 2,
     "builds": [
         {
-            "src": "./server/index.js",
+            "src": "server/index.js",
             "use": "@vercel/node"
         },
         {
-            "src": "./client/package.json",
+            "src": "client/package.json",
             "use": "@vercel/static-build",
             "config": {
                 "distDir": "dist",
@@ -16,12 +16,19 @@
     ],
     "routes": [
         {
+            "src": "/robots.txt",
+            "dest": "/client/public/robots.txt"
+        },
+        {
+            "src": "/sitemap.xml",
+            "dest": "/client/public/sitemap.xml"
+        },
+        {
             "src": "/api/(.*)",
             "dest": "/server/index.js"
         },
         {
-            "src": "/(.*\\.(css|js|json|png|jpg|jpeg|svg|ico|woff|woff2|ttf))",
-            "dest": "/client/$1"
+            "handle": "filesystem"
         },
         {
             "src": "/(.*)",
