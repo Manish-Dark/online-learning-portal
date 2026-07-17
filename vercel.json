@@ -9,20 +9,11 @@
             "src": "client/package.json",
             "use": "@vercel/static-build",
             "config": {
-                "distDir": "dist",
-                "installCommand": "npm install"
+                "distDir": "dist"
             }
         }
     ],
     "routes": [
-        {
-            "src": "/robots.txt",
-            "dest": "/client/public/robots.txt"
-        },
-        {
-            "src": "/sitemap.xml",
-            "dest": "/client/public/sitemap.xml"
-        },
         {
             "src": "/api/(.*)",
             "dest": "/server/index.js"
@@ -32,7 +23,7 @@
         },
         {
             "src": "/(.*)",
-            "dest": "/client/index.html"
+            "dest": "/client/dist/index.html"
         }
     ]
 }
