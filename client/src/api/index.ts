@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://online-learning-portal-ciy7.onrender.com/api';
 const API = axios.create({ baseURL: API_BASE_URL });
 export const BASE_URL = API_BASE_URL.replace(/\/api$/, '');
 
